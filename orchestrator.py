@@ -63,13 +63,30 @@ team_name.print_response(
 )
 '''
 
+TEST_SPRINT_PLAN_CONTENT = """
+```
+# Sprint 1
+- Implement core narrative logic
+- Define branching choices
+
+# Sprint 2
+- Develop UI assets
+- Playtest and iterate
+
+# Sprint 3
+- Polish and finalize release build
+```
+"""
+
 from agno.utils.log import logger
 import os
+import shutil
 
 class Orchestrator:
-    def __init__(self, teams, output_folder="output/", max_task_retry=3, use_agno_logger=True):
+    def __init__(self, teams, evaluate_report, output_folder="output/", max_task_retry=3, use_agno_logger=True):
         """Initialize the orchestrator with a dictionary of team agents."""
         self.teams = teams  # Dictionary: {"team_name": team_agent}
+        self.evaluate_report = evaluate_report
         self.output_folder = output_folder
         self.max_task_retry = max_task_retry
         self.use_agno_logger = use_agno_logger
@@ -82,32 +99,46 @@ class Orchestrator:
             print(message)
 
     def run_project(self, brief):
-        """Orchestrates the project execution based on the CEO's brief."""
-        self.log("📌 Planning sprints based on the CEO's brief...\n")
-        self.teams["project_planning"].print_response(
-            f"Break down the project based on the CEO's brief: {brief}. Define a list of sprints and their deliverables. "
-            f"Use Markdown format with `# Sprint name` as headings. Save the result to `{self.sprint_plan_file}`.",
-            stream=True,
-            show_full_reasoning=True
-        )
-
-        # Read the sprint plan file and extract sprint names
-        sprints = self.parse_sprint_plan()
+        attempts = 0
+        while attempts < self.max_task_retry:
+            if not os.path.exists(self.output_folder + self.sprint_plan_file):
+                """Orchestrates the project execution based on the CEO's brief."""
+                self.log(f"📌 Planning sprints based on the CEO's brief (Attempt {attempts + 1}/{self.max_task_retry})...\n")
+                self.teams["project_planning"].print_response(
+                    f"Break down the project based on the CEO's brief: {brief}. Define a list of sprints and their deliverables. "
+                    f"Use Markdown format with `# Sprint name` as headings ONLY. Save the result to `{self.sprint_plan_file}`."
+                    f"The plan should consist only of headings and bullet points, do not add extraneous details."
+                    f"Example plan file content, copy this format EXACTLY:\n{TEST_SPRINT_PLAN_CONTENT}",
+                    stream=True,
+                    show_full_reasoning=True
+                )
+            # Read the sprint plan file and extract sprint names
+            sprints = self.parse_sprint_plan()
+            if len(sprints) > 0:
+                break  # Move to next sprint
+            if os.path.exists(self.output_folder):
+                shutil.rmtree(self.output_folder)  # Remove all files and subdirectories
+                os.makedirs(self.output_folder)  # Recreate an empty test output folder
+            attempts += 1
+        
+        if attempts == self.max_task_retry:
+            self.log(f"❌ Failed after {self.max_task_retry} attempts to generate a sprint plan.\n")
+            return {}
 
         for sprint in sprints:
             attempts = 0
             while attempts < self.max_task_retry:
-                self.log(f"\n🚀 Running {sprint} (Attempt {attempts + 1}/{self.max_task_retry})...\n")
+                self.log(f"\n🚀 Running {sprint['title']} (Attempt {attempts + 1}/{self.max_task_retry})...\n")
                 result = self.run_sprint(sprint)
                 if result == "PASS":
                     break  # Move to next sprint
                 attempts += 1
 
             if attempts == self.max_task_retry:
-                failure_report_file = f"{sprint}_failure_report.md"
-                self.log(f"❌ {sprint} has failed after {self.max_task_retry} attempts. Generating failure report ({failure_report_file})...\n")
+                failure_report_file = f"{sprint['title']}_failure_report.md"
+                self.log(f"❌ {sprint['title']} has failed after {self.max_task_retry} attempts. Generating failure report ({failure_report_file})...\n")
                 self.teams["project_planning"].print_response(
-                    f"Generate a project failure report for {sprint}. Explain what went wrong and suggest potential improvements. "
+                    f"Generate a project failure report for {sprint['title']}. Explain what went wrong and suggest potential improvements. "
                     f"Save the report to `{failure_report_file}`.",
                     stream=True,
                     show_full_reasoning=True
@@ -117,96 +148,126 @@ class Orchestrator:
 
     def run_sprint(self, sprint):
         """Runs a single sprint, gathering requirements, developing deliverables, and ensuring quality assurance."""
+        sprint_file_prefix = sprint["title"].lower().replace(" ", "_")
 
-        requirements_file = f"{sprint}_requirements.md"
-        self.log(f"📜 Gathering requirements for {sprint}...\n")
+        requirements_file = f"{sprint_file_prefix}_requirements.md"
+        self.log(f"📜 Gathering requirements for {sprint['title']}...\n")
         self.teams["requirements_gathering"].print_response(
-            f"Define detailed feature requirements for {sprint}. Ensure alignment with user expectations, technical feasibility, and project goals. "
-            f"Save the result to `{requirements_file}`.",
+            f"Define detailed feature requirements for {sprint['title']}. Ensure alignment with user expectations, technical feasibility, and project goals. "
+            f"Save the result to `{requirements_file}`."
+            f"Use the following details for the sprint: {sprint['details']}",
             stream=True,
             show_full_reasoning=True
         )
 
-        deliverables_file = f"{sprint}_deliverables.md"
-        self.log(f"🛠️ Developing deliverables for {sprint}...\n")
+        deliverables_file_prefix = f"{sprint_file_prefix}_deliverables"
+        self.log(f"🛠️ Developing deliverables for {sprint['title']}...\n")
         self.teams["development"].print_response(
-            f"Develop all deliverables for {sprint}, including Ink scripts, game mechanics, and background assets. "
-            f"Use requirement documents to ensure alignment. Save the result to `{deliverables_file}`.",
+            f"Develop all deliverables for {sprint['title']}, including Ink scripts, game mechanics, and background assets. "
+            f"Use requirement document `{requirements_file}` to ensure alignment. Save the result to file(s) prefixed with `{deliverables_file_prefix}`.",
             stream=True,
             show_full_reasoning=True
         )
 
         attempts = 0
         while attempts < self.max_task_retry:
-            qa_report_file = f"{sprint}_qa_report.md"
-            self.log(f"🔍 Performing quality assurance for {sprint} (Attempt {attempts + 1}/{self.max_task_retry})...\n")
+            qa_report_file = f"{sprint_file_prefix}_qa_report.md"
+            self.log(f"🔍 Performing quality assurance for {sprint['title']} (Attempt {attempts + 1}/{self.max_task_retry})...\n")
             self.teams["quality_assurance"].print_response(
-                f"Test all deliverables for {sprint}. Identify any functional issues, narrative inconsistencies, or usability problems. "
+                f"Test all deliverables for {sprint['title']}. Identify any functional issues, narrative inconsistencies, or usability problems. "
+                f"Use the requirement document `{requirements_file}` and deliverables file(s) prefixed with `{deliverables_file_prefix}` for reference."
                 f"Generate a QA report and save it to `{qa_report_file}`.",
                 stream=True,
                 show_full_reasoning=True
             )
 
-            qa_status = "PASS"  # Placeholder for real validation logic
+            qa_status = self.evaluate_report(self.output_folder + qa_report_file)
             if qa_status == "FAIL":
-                self.log(f"❌ QA failed for {sprint}. Revising deliverables...\n")
+                self.log(f"❌ QA failed for {sprint['title']}. Revising deliverables...\n")
                 self.teams["development"].print_response(
-                    f"Revise the deliverables based on the QA report for {sprint}. Address the identified issues and re-submit. "
-                    f"Save the revised deliverables to `{deliverables_file}`.",
+                    f"Revise the deliverables based on the QA report for {sprint['title']}. Address the identified issues and re-submit. "
+                    f"Use requirement document `{requirements_file}` to ensure alignment. Save the result to file(s) prefixed with `{deliverables_file_prefix}`.",
                     stream=True,
                     show_full_reasoning=True
                 )
                 attempts += 1
                 continue
 
-            self.log(f"✅ Quality Assurance Passed for {sprint}. Proceeding to Acceptance Testing...\n")
+            self.log(f"✅ Quality Assurance Passed for {sprint['title']}. Proceeding to Acceptance Testing...\n")
 
-            acceptance_report_file = f"{sprint}_acceptance_report.md"
+            acceptance_report_file = f"{sprint_file_prefix}_acceptance_report.md"
             self.teams["acceptance_testing"].print_response(
-                f"Evaluate deliverables for {sprint}. Ensure they meet user expectations, match project goals, and function correctly in the overall system. "
+                f"Evaluate deliverables for {sprint['title']}. Ensure they meet user expectations, match project goals, and function correctly in the overall system. "
+                f"Use the requirement document `{requirements_file}` and deliverables file(s) prefixed with `{deliverables_file_prefix}` for reference."
                 f"Save the report to `{acceptance_report_file}`.",
                 stream=True,
                 show_full_reasoning=True
             )
 
-            acceptance_status = "PASS"  # Placeholder for real validation logic
+            acceptance_status = self.evaluate_report(self.output_folder + acceptance_report_file)
             if acceptance_status == "FAIL":
-                self.log(f"❌ Acceptance Testing failed for {sprint}. Revising deliverables...\n")
+                self.log(f"❌ Acceptance Testing failed for {sprint['title']}. Revising deliverables...\n")
                 self.teams["development"].print_response(
-                    f"Revise the deliverables based on the acceptance test report for {sprint}. Address the identified issues and re-submit. "
-                    f"Save the revised deliverables to `{deliverables_file}`.",
+                    f"Revise the deliverables based on the acceptance test report for {sprint['title']}. Address the identified issues and re-submit. "
+                    f"Use requirement document `{requirements_file}` to ensure alignment. Save the result to file(s) prefixed with `{deliverables_file_prefix}`.",
                     stream=True,
                     show_full_reasoning=True
                 )
                 attempts += 1
                 continue
+
+            self.log(f"✅ Acceptance Testing Passed for {sprint['title']}. Sprint is completed.\n")
 
             return "PASS"  # Both QA and Acceptance passed
 
         return "FAIL"  # Max retries exceeded
 
     def parse_sprint_plan(self):
-        """Reads the sprint plan file and extracts sprint names based on `# Sprint name` headings."""
-        if not os.path.exists(self.output_folder + self.sprint_plan_file):
+        """Reads the sprint plan file and extracts sprint names along with their details."""
+        sprint_file_path = os.path.join(self.output_folder, self.sprint_plan_file)
+        
+        if not os.path.exists(sprint_file_path):
             self.log(f"❌ Error: Sprint plan file `{self.sprint_plan_file}` not found.")
             return []
 
         sprints = []
-        with open(self.output_folder + self.sprint_plan_file, "r", encoding="utf-8") as file:
+        current_sprint = None
+        sprint_details = []
+
+        with open(sprint_file_path, "r", encoding="utf-8") as file:
             for line in file:
-                if line.startswith("# "):  # Markdown heading for sprint name
-                    sprint_name = line.strip("# ").strip()
-                    sprints.append(sprint_name)
+                line = line.strip()
+                
+                if line.find("##") != -1:
+                    self.log(f"❌ Error: Sprint plan file `{self.sprint_plan_file}` malformed, contains subheadings.")
+                    return []
+
+                if line.startswith("# "):  # New sprint starts
+                    if current_sprint:  # Save previous sprint before starting new one
+                        sprints.append({"title": current_sprint, "details": sprint_details})
+
+                    current_sprint = line.strip("# ").strip()
+                    sprint_details = []  # Reset details for new sprint
+                
+                elif current_sprint and line:  # Collect details under current sprint
+                    sprint_details.append(line)
+
+        # Add the last sprint if it exists
+        if current_sprint:
+            sprints.append({"title": current_sprint, "details": sprint_details})
 
         self.log(f"📋 Extracted {len(sprints)} sprints from `{self.sprint_plan_file}`: {sprints}")
         return sprints
 
+
     def get_artifacts(self):
         """Placeholder function to return final deliverables."""
+        # TODO : implement
         return "Final deliverables"
 
     def get_reports(self):
         """Placeholder function to return final reports."""
+        # TODO : implement
         return "Final reports"
 
     def bundle(self, artifacts, reports):

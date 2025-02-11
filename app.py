@@ -8,19 +8,69 @@ from agno.tools.python import PythonTools
 from agno.tools.wikipedia import WikipediaTools
 #from agno.models.ollama import Ollama
 from agno.models.openai import OpenAIChat
+#from agno.models.anthropic import Claude
 from pathlib import Path
 from orchestrator import Orchestrator
+import openai
+import os
+
+enable_debug=False
 
 # "Develop a high-quality text-based narrative game using Ink, incorporating branching storylines and engaging player choices."
 user_input = input("Write your CEO project directive statement: ")
+if user_input == "":
+    user_input = "Create a game prototype with the following idea: The life of an ant that becomes sentient and decides to go on a journey to discover the meaning of life."
+    print(f"Using default input: {user_input}")
 
-#llm=Ollama(id="llama3.2")
+#llm=Ollama(id="mistral")
 llm=OpenAIChat(id="gpt-4o")
+#llm=Claude(id="claude-3-5-sonnet-latest")
 
 output_dir = Path("output/")
 
 with open('ink_guide.md', 'r') as f:
     ink_guide = f.read()
+
+with open('company_overview_memo.md', 'r') as f:
+    company_overview = f.read()
+
+
+# --- Utility Functions ---
+
+def evaluate_report(report_file):
+    """Reads a QA report file and determines whether the result is PASS or FAIL using OpenAI."""
+    
+    if not os.path.exists(report_file):
+        raise FileNotFoundError(f"❌ Error: report file `{report_file}` not found.")
+
+    with open(report_file, "r", encoding="utf-8") as file:
+        report_content = file.read()
+
+    prompt = (
+        "You are an AI system that strictly evaluates a assessment report.\n"
+        "Read the following QA report and determine if the final outcome is PASS or FAIL.\n"
+        "Respond with strictly either the word PASS or FAIL, and nothing else.\n\n"
+        f"QA Report:\n{report_content}\n\n"
+        "Final Evaluation:"
+    )
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=5,  # Ensures only "PASS" or "FAIL" is returned
+        temperature=0  # Ensures deterministic output
+    )
+
+    result = response["choices"][0]["message"]["content"].strip()
+    
+    if result not in ["PASS", "FAIL"]:
+        raise ValueError(f"Unexpected AI response: {result}")
+
+    return result
+
+# Example usage
+# print(evaluate_qa_report("sprint_1_qa_report.md"))  # Should return either "PASS" or "FAIL"
+
 
 # Example individual agent definition
 '''
@@ -30,7 +80,7 @@ agent_name = Agent(
     expected_output="Specific output expected from the agent, specifying format if needed but not filenames, etc.",
     # none or more of the following tools
     tools=[
-        FileTools(), # IMPORTANT: can read and write files, e.g. read documentation, write documents, code, etc.
+        FileTools(base_dir=output_dir), # IMPORTANT: can read and write files, e.g. read documentation, write documents, code, etc.
         DalleTools(), # ESSENTIAL: genrate images with DALL-E
         DuckDuckGoTools(), # web search
         PythonTools(), # write Python files, run Python code, use pip to install packages
@@ -49,17 +99,17 @@ agent_name = Agent(
 # ---- PROJECT PLANNING AGENTS ----
 project_owner = Agent(
     name="Project Owner",
-    role="Oversees the project's vision and defines high-level objectives. Ensures the direction aligns with business goals and creative intent, providing strategic guidance throughout development.",
+    role="Oversees the project's vision and defines high-level objectives. Ensures the direction aligns with business goals and creative intent, providing strategic guidance throughout development. Align all your efforts with the company memo:\n\n" + company_overview,
     expected_output="A well-defined project goal with clear priorities, scope, and constraints.",
-    tools=[FileTools(), DuckDuckGoTools()],
+    tools=[FileTools(base_dir=output_dir), DuckDuckGoTools()],
     model=llm,
 )
 
 project_manager = Agent(
     name="Project Manager",
-    role="Breaks down the project into sprint milestones and ensures team coordination. Tracks dependencies, manages deadlines, and ensures deliverables align with the defined project roadmap.",
+    role="Breaks down the project into sprint milestones and ensures team coordination. Tracks dependencies, manages deadlines, and ensures deliverables align with the defined project roadmap. Align all your efforts with the company memo:\n\n" + company_overview,
     expected_output="A structured sprint plan detailing milestones, deliverables, and dependencies.",
-    tools=[FileTools(), CsvTools()],
+    tools=[FileTools(base_dir=output_dir), CsvTools()],
     model=llm,
 )
 
@@ -73,50 +123,48 @@ market_researcher = Agent(
 
 # ---- REQUIREMENTS GATHERING & ASSESSMENT AGENTS ----
 product_owner_writer = Agent(
-    name="Product Owner (Requirements Writer)",
+    name="Product Owner Requirements Writer",
     role="Translates high-level project goals into structured feature requirements. Works closely with designers and developers to ensure clarity and feasibility of implementation.",
     expected_output="A formal requirements document detailing features, constraints, and expected outcomes.",
-    tools=[FileTools()],
+    tools=[FileTools(base_dir=output_dir)],
     model=llm,
 )
 
 product_owner_evaluator = Agent(
-    name="Product Owner (Evaluator)",
+    name="Product Owner Evaluator",
     role="Reviews completed deliverables against requirements. Ensures features meet project goals, adhere to specifications, and maintain consistency within the overall vision.",
     expected_output="An evaluation report comparing deliverables to original requirements with feedback on any gaps.",
-    tools=[FileTools()],
+    tools=[FileTools(base_dir=output_dir)],
     model=llm,
 )
 
 game_designer_requirements = Agent(
-    name="Game Designer (Requirements Input)",
+    name="Game Designer Requirements Helper",
     role="Defines gameplay mechanics, narrative structure, and interaction systems. Ensures gameplay is engaging and aligns with the project's themes and goals.",
     expected_output="A game design document outlining core mechanics, balance considerations, and player interactions.",
-    tools=[FileTools()],
+    tools=[FileTools(base_dir=output_dir)],
     model=llm,
 )
 
 game_designer_code_advisor = Agent(
-    name="Game Designer (Code Advisor)",
+    name="Game Designer Code Advisor",
     role="Provides structured guidance on how game mechanics should be implemented in the Ink scripting system. Advises on scene structuring, branching choices, and interactive pacing.",
     expected_output="Annotated Ink script structure recommendations or pseudocode for implementing gameplay.",
-    tools=[FileTools(), PythonTools()],
+    tools=[FileTools(base_dir=output_dir), PythonTools()],
     model=llm,
 )
 
 user_focus_group_requirements = Agent(
-    name="User Focus Group (Requirements Input)",
+    name="User Focus Group Requirements Helper",
     role="Simulates a range of player perspectives to anticipate usability issues and engagement factors. Provides insights to refine requirements for an optimal player experience.",
     expected_output="A user perspective report suggesting refinements to gameplay and user experience requirements.",
-    tools=[],
     model=llm,
 )
 
 user_focus_group_evaluator = Agent(
-    name="User Focus Group (Evaluator)",
+    name="User Focus Group Evaluator",
     role="Evaluates completed deliverables from a player perspective. Assesses if the content is engaging, intuitive, and aligns with user expectations based on initial goals.",
     expected_output="A usability evaluation report listing engagement strengths, pain points, and player reception insights.",
-    tools=[],
     model=llm,
 )
 
@@ -124,7 +172,7 @@ ux_designer = Agent(
     name="UX Designer",
     role="Designs interface flows, interactions, and player feedback systems. Ensures intuitive and accessible navigation across the game's narrative structure.",
     expected_output="A UX specification document with wireframes, interaction models, and accessibility considerations.",
-    tools=[FileTools(), DalleTools()],
+    tools=[FileTools(base_dir=output_dir), DalleTools()],
     model=llm,
 )
 
@@ -133,7 +181,7 @@ ink_script_developer = Agent(
     name="Ink Script Developer",
     role="Writes structured Ink scripts to implement the game’s branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide:\n\n" + ink_guide,
     expected_output="A well-structured Ink script implementing interactive narrative and state logic.",
-    tools=[FileTools(), PythonTools(), ShellTools()],
+    tools=[FileTools(base_dir=output_dir), PythonTools(), ShellTools()],
     model=llm,
 )
 
@@ -141,7 +189,7 @@ background_artist = Agent(
     name="Background Artist",
     role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with UX designers and writers to align visual storytelling with narrative tone.",
     expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
-    tools=[FileTools(), DalleTools()],
+    tools=[FileTools(base_dir=output_dir), DalleTools()],
     model=llm,
 )
 
@@ -150,7 +198,7 @@ software_tester = Agent(
     name="Software Tester",
     role="Tests Ink scripts and game code for functional correctness, debugging syntax errors and unintended narrative flows. Ensures a smooth and error-free experience for players.",
     expected_output="A bug report detailing logic issues, script errors, and potential narrative inconsistencies.",
-    tools=[FileTools(), PythonTools()],
+    tools=[FileTools(base_dir=output_dir), PythonTools()],
     model=llm,
 )
 
@@ -158,7 +206,7 @@ game_tester = Agent(
     name="Game Tester",
     role="Performs playtests to evaluate gameplay balance, progression flow, and overall experience. Identifies inconsistencies in storytelling, pacing, and player engagement.",
     expected_output="A gameplay test report with feedback on narrative cohesion, interaction pacing, and engagement quality.",
-    tools=[FileTools()],
+    tools=[FileTools(base_dir=output_dir)],
     model=llm,
 )
 
@@ -197,6 +245,7 @@ project_planning_team = Agent(
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
+    debug_mode=enable_debug,
 )
 
 # ---- REQUIREMENTS GATHERING TEAM ----
@@ -214,6 +263,7 @@ requirements_gathering_team = Agent(
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
+    debug_mode=enable_debug,
 )
 
 # ---- DEVELOPMENT TEAM ----
@@ -232,6 +282,7 @@ development_team = Agent(
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
+    debug_mode=enable_debug,
 )
 
 # ---- QUALITY ASSURANCE TEAM ----
@@ -249,6 +300,7 @@ quality_assurance_team = Agent(
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
+    debug_mode=enable_debug,
 )
 
 # ---- ACCEPTANCE TESTING TEAM ----
@@ -266,6 +318,7 @@ acceptance_testing_team = Agent(
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
+    debug_mode=enable_debug,
 )
 
 if __name__ == "__main__":
@@ -277,7 +330,7 @@ if __name__ == "__main__":
         "acceptance_testing": acceptance_testing_team,
     }
 
-    orchestrator = Orchestrator(teams=teams)
+    orchestrator = Orchestrator(teams=teams, evaluate_report=evaluate_report)
 
     print("\n🚀 Starting production run for Orchestrator...\n")
 
