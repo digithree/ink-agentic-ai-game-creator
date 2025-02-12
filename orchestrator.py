@@ -65,15 +65,17 @@ team_name.print_response(
 
 TEST_SPRINT_PLAN_CONTENT = """
 ```
-# Sprint 1
+# Sprint plan
+
+## Sprint 1
 - Implement core narrative logic
 - Define branching choices
 
-# Sprint 2
+## Sprint 2
 - Develop UI assets
 - Playtest and iterate
 
-# Sprint 3
+## Sprint 3
 - Polish and finalize release build
 ```
 """
@@ -87,7 +89,9 @@ import re
 MAX_SPRINTS = 5
 
 def exists_any_file_with_prefix(prefix, directory='.'):
-    return any(glob.fnmatch(filename, f"{prefix}*") for filename in glob.glob(f"{directory}/**/*"))
+    """Checks if any file in the given directory (or subdirectories) starts with the specified prefix."""
+    search_pattern = os.path.join(directory, f"{prefix}*")  # Create a proper wildcard pattern
+    return any(glob.glob(search_pattern, recursive=True))  # Check if any file matches
 
 class Orchestrator:
     def __init__(self, teams, evaluate_report, output_folder="output/", max_task_retry=3, use_agno_logger=True):
@@ -265,7 +269,7 @@ class Orchestrator:
         return "FAIL"  # Max retries exceeded
 
     def parse_sprint_plan(self):
-        """Reads the sprint plan file and extracts sprint names along with their details."""
+        """Reads the sprint plan file and extracts sprint names along with their details, accommodating H2 headings for sprints."""
         sprint_file_path = os.path.join(self.output_folder, self.sprint_plan_file)
         
         if not os.path.exists(sprint_file_path):
@@ -275,20 +279,23 @@ class Orchestrator:
         sprints = []
         current_sprint = None
         sprint_details = []
+        is_first_heading = True  # Tracks if we've encountered the first H1 heading
 
         with open(sprint_file_path, "r", encoding="utf-8") as file:
             for line in file:
                 line = line.strip()
-                
-                if line.find("##") != -1:
-                    self.log(f"❌ Error: Sprint plan file `{self.sprint_plan_file}` malformed, contains subheadings.")
-                    return []
 
-                if line.startswith("# "):  # New sprint starts
-                    if current_sprint:  # Save previous sprint before starting new one
+                # Ignore the first H1 heading (assumed to be "# Sprint plan")
+                if is_first_heading and line.startswith("# "):
+                    is_first_heading = False  # Mark that we've processed the first heading
+                    continue
+
+                # Identify new sprints from H2 headings (## Sprint Name)
+                if line.startswith("## "):  
+                    if current_sprint:  # Save the previous sprint before starting a new one
                         sprints.append({"title": current_sprint, "details": sprint_details})
 
-                    current_sprint = line.strip("# ").strip()
+                    current_sprint = line.strip("# ").strip()  # Extract sprint name
                     sprint_details = []  # Reset details for new sprint
                 
                 elif current_sprint and line:  # Collect details under current sprint
@@ -300,6 +307,7 @@ class Orchestrator:
 
         self.log(f"📋 Extracted {len(sprints)} sprints from `{self.sprint_plan_file}`: {sprints}")
         return sprints
+
 
 
     def get_artifacts(self):

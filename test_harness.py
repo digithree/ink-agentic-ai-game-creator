@@ -24,15 +24,17 @@ stubbed_teams = {
 OUTPUT_FOLDER = "test_output/"
 SPRINT_PLAN_FILE = "sprint_plan.md"
 TEST_SPRINT_PLAN_CONTENT = """
-# Sprint 1
+# Sprint plan
+
+## Sprint 1
 - Implement core narrative logic
 - Define branching choices
 
-# Sprint 2
+## Sprint 2
 - Develop UI assets
 - Playtest and iterate
 
-# Sprint 3
+## Sprint 3
 - Polish and finalize release build
 """
 
