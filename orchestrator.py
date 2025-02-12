@@ -143,6 +143,7 @@ class Orchestrator:
                 result = self.run_sprint(sprint)
                 if result == "PASS":
                     break  # Move to next sprint
+                logger.error(f"❌ {sprint['title']} runner has failed.\n")
                 attempts += 1
 
             if attempts == self.max_task_retry:
@@ -159,7 +160,8 @@ class Orchestrator:
 
     def run_sprint(self, sprint):
         """Runs a single sprint, gathering requirements, developing deliverables, and ensuring quality assurance."""
-        sprint_file_prefix = re.sub(r'[^a-zA-Z0-9_]', '', sprint["title"].lower().replace(" ", "_"))
+        sprint_title = sprint["title"].split(":")[0]  # Take substring before ':' if it exists
+        sprint_file_prefix = re.sub(r'[^a-zA-Z0-9_]', '', sprint_title.lower().replace(" ", "_"))
         deliverables_file_prefix = f"{sprint_file_prefix}_deliverables"
 
         attempts = 0
@@ -177,6 +179,7 @@ class Orchestrator:
             # check file was written, otherwise retry
             if os.path.exists(self.output_folder + requirements_file):
                 break  # Move to next step
+            logger.error(f"⚠️ No requirements file found for {sprint['title']}.")
             attempts += 1
         if attempts == self.max_task_retry:
             self.log(f"❌ Gathering requirements failed for {sprint['title']}.\n")
@@ -193,6 +196,7 @@ class Orchestrator:
             )
             if exists_any_file_with_prefix(deliverables_file_prefix, self.output_folder):
                 break  # Move to next step
+            logger.error(f"⚠️ No deliverables files found for {sprint['title']}.")
             attempts += 1
         if attempts == self.max_task_retry:
             self.log(f"❌ Development failed for {sprint['title']}.\n")
@@ -213,6 +217,7 @@ class Orchestrator:
                 )
                 if os.path.exists(self.output_folder + qa_report_file):
                     break
+                logger.error(f"⚠️ No QA report file found for {sprint['title']}.")
                 inner_attempts += 1
             if inner_attempts == self.max_task_retry:
                 self.log(f"❌ Quality Assurance report writing failed for {sprint['title']}.\n")
@@ -245,6 +250,7 @@ class Orchestrator:
                 )
                 if os.path.exists(self.output_folder + acceptance_report_file):
                     break
+                logger.error(f"⚠️ No Acceptance Testing report file found for {sprint['title']}.")
                 inner_attempts += 1
             if inner_attempts == self.max_task_retry:
                 self.log(f"❌ Acceptance Testing report writing failed for {sprint['title']}.\n")
