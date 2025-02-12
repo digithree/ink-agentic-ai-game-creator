@@ -1,4 +1,5 @@
 from agno.agent import Agent
+from agno.utils.log import logger
 from agno.tools.shell import ShellTools
 from agno.tools.file import FileTools
 from agno.tools.duckduckgo import DuckDuckGoTools
@@ -22,8 +23,10 @@ if user_input == "":
     user_input = "Create a game prototype with the following idea: The life of an ant that becomes sentient and decides to go on a journey to discover the meaning of life."
     print(f"Using default input: {user_input}")
 
+openai_model = "gpt-4o"
+
 #llm=Ollama(id="mistral")
-llm=OpenAIChat(id="gpt-4o")
+#llm=OpenAIChat(id=openai_model)
 #llm=Claude(id="claude-3-5-sonnet-latest")
 
 output_dir = Path("output/")
@@ -41,7 +44,8 @@ def evaluate_report(report_file):
     """Reads a QA report file and determines whether the result is PASS or FAIL using OpenAI."""
     
     if not os.path.exists(report_file):
-        raise FileNotFoundError(f"❌ Error: report file `{report_file}` not found.")
+        logger.error(f"❌ Error: report file `{report_file}` not found, failing by default.")
+        return "FAIL"
 
     with open(report_file, "r", encoding="utf-8") as file:
         report_content = file.read()
@@ -92,7 +96,7 @@ agent_name = Agent(
         # and you can even simply add custom tools as Python function references, such as running a linter, executing code, get a quality metric for an image, etc.
     ],
     # don't change the below
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 '''
 
@@ -102,7 +106,7 @@ project_owner = Agent(
     role="Oversees the project's vision and defines high-level objectives. Ensures the direction aligns with business goals and creative intent, providing strategic guidance throughout development. Align all your efforts with the company memo:\n\n" + company_overview,
     expected_output="A well-defined project goal with clear priorities, scope, and constraints.",
     tools=[FileTools(base_dir=output_dir), DuckDuckGoTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 project_manager = Agent(
@@ -110,7 +114,7 @@ project_manager = Agent(
     role="Breaks down the project into sprint milestones and ensures team coordination. Tracks dependencies, manages deadlines, and ensures deliverables align with the defined project roadmap. Align all your efforts with the company memo:\n\n" + company_overview,
     expected_output="A structured sprint plan detailing milestones, deliverables, and dependencies.",
     tools=[FileTools(base_dir=output_dir), CsvTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 market_researcher = Agent(
@@ -118,7 +122,7 @@ market_researcher = Agent(
     role="Analyzes industry trends, competitor offerings, and player expectations. Synthesizes insights from external sources to refine product direction and identify unique selling points.",
     expected_output="A market research report including industry trends, competitor analysis, and user expectations.",
     tools=[DuckDuckGoTools(), WikipediaTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 # ---- REQUIREMENTS GATHERING & ASSESSMENT AGENTS ----
@@ -127,7 +131,7 @@ product_owner_writer = Agent(
     role="Translates high-level project goals into structured feature requirements. Works closely with designers and developers to ensure clarity and feasibility of implementation.",
     expected_output="A formal requirements document detailing features, constraints, and expected outcomes.",
     tools=[FileTools(base_dir=output_dir)],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 product_owner_evaluator = Agent(
@@ -135,7 +139,7 @@ product_owner_evaluator = Agent(
     role="Reviews completed deliverables against requirements. Ensures features meet project goals, adhere to specifications, and maintain consistency within the overall vision.",
     expected_output="An evaluation report comparing deliverables to original requirements with feedback on any gaps.",
     tools=[FileTools(base_dir=output_dir)],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 game_designer_requirements = Agent(
@@ -143,7 +147,7 @@ game_designer_requirements = Agent(
     role="Defines gameplay mechanics, narrative structure, and interaction systems. Ensures gameplay is engaging and aligns with the project's themes and goals.",
     expected_output="A game design document outlining core mechanics, balance considerations, and player interactions.",
     tools=[FileTools(base_dir=output_dir)],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 game_designer_code_advisor = Agent(
@@ -151,21 +155,21 @@ game_designer_code_advisor = Agent(
     role="Provides structured guidance on how game mechanics should be implemented in the Ink scripting system. Advises on scene structuring, branching choices, and interactive pacing.",
     expected_output="Annotated Ink script structure recommendations or pseudocode for implementing gameplay.",
     tools=[FileTools(base_dir=output_dir), PythonTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 user_focus_group_requirements = Agent(
     name="User Focus Group Requirements Helper",
     role="Simulates a range of player perspectives to anticipate usability issues and engagement factors. Provides insights to refine requirements for an optimal player experience.",
     expected_output="A user perspective report suggesting refinements to gameplay and user experience requirements.",
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 user_focus_group_evaluator = Agent(
     name="User Focus Group Evaluator",
     role="Evaluates completed deliverables from a player perspective. Assesses if the content is engaging, intuitive, and aligns with user expectations based on initial goals.",
     expected_output="A usability evaluation report listing engagement strengths, pain points, and player reception insights.",
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 ux_designer = Agent(
@@ -173,7 +177,7 @@ ux_designer = Agent(
     role="Designs interface flows, interactions, and player feedback systems. Ensures intuitive and accessible navigation across the game's narrative structure.",
     expected_output="A UX specification document with wireframes, interaction models, and accessibility considerations.",
     tools=[FileTools(base_dir=output_dir), DalleTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 # ---- DEVELOPMENT AGENTS ----
@@ -182,7 +186,7 @@ ink_script_developer = Agent(
     role="Writes structured Ink scripts to implement the game’s branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide:\n\n" + ink_guide,
     expected_output="A well-structured Ink script implementing interactive narrative and state logic.",
     tools=[FileTools(base_dir=output_dir), PythonTools(), ShellTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 background_artist = Agent(
@@ -190,7 +194,7 @@ background_artist = Agent(
     role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with UX designers and writers to align visual storytelling with narrative tone.",
     expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
     tools=[FileTools(base_dir=output_dir), DalleTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 # ---- QUALITY ASSURANCE AGENTS ----
@@ -199,7 +203,7 @@ software_tester = Agent(
     role="Tests Ink scripts and game code for functional correctness, debugging syntax errors and unintended narrative flows. Ensures a smooth and error-free experience for players.",
     expected_output="A bug report detailing logic issues, script errors, and potential narrative inconsistencies.",
     tools=[FileTools(base_dir=output_dir), PythonTools()],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 game_tester = Agent(
@@ -207,7 +211,7 @@ game_tester = Agent(
     role="Performs playtests to evaluate gameplay balance, progression flow, and overall experience. Identifies inconsistencies in storytelling, pacing, and player engagement.",
     expected_output="A gameplay test report with feedback on narrative cohesion, interaction pacing, and engagement quality.",
     tools=[FileTools(base_dir=output_dir)],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
 )
 
 # --- Teams ---
@@ -223,7 +227,7 @@ team_name = Agent(
         "Essential thing for team to know"
     ],
     # don't change the below
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
@@ -240,7 +244,7 @@ project_planning_team = Agent(
         "Ensure the project roadmap aligns with market trends, business goals, and feasibility constraints.",
         "Gather relevant market data to support planning decisions and feature prioritization.",
     ],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
@@ -258,7 +262,7 @@ requirements_gathering_team = Agent(
         "Game-specific requirements must include mechanics, progression, and narrative interaction details.",
         "User insights should be incorporated to refine and improve the requirement specifications.",
     ],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
@@ -277,7 +281,7 @@ development_team = Agent(
         "Background Artist should create environment visuals that match the tone and aesthetic of the game.",
         "Ensure assets are created in a modular way to allow for iteration and expansion.",
     ],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
@@ -295,7 +299,7 @@ quality_assurance_team = Agent(
         "Game Tester should playtest deliverables, providing feedback on pacing, interaction design, and engagement.",
         "Document all identified issues and ensure reports provide clear feedback for iterative improvements.",
     ],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
@@ -313,7 +317,7 @@ acceptance_testing_team = Agent(
         "User Focus Group Evaluator should assess usability, player engagement, and narrative coherence.",
         "Provide detailed feedback on improvements before final acceptance of the deliverables.",
     ],
-    model=llm,
+    model=OpenAIChat(id=openai_model),
     reasoning=True,
     markdown=True,
     structured_outputs=True,
