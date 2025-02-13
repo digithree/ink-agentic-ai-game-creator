@@ -1,4 +1,5 @@
 from orchestrator import Orchestrator  # Import the Orchestrator class
+from utils import find_potential_reports
 import os
 import shutil
 
@@ -22,21 +23,6 @@ stubbed_teams = {
 
 # Pre-populated test file content
 OUTPUT_FOLDER = "test_output/"
-SPRINT_PLAN_FILE = "sprint_plan.md"
-TEST_SPRINT_PLAN_CONTENT = """
-# Sprint plan
-
-## Sprint 1
-- Implement core narrative logic
-- Define branching choices
-
-## Sprint 2
-- Develop UI assets
-- Playtest and iterate
-
-## Sprint 3
-- Polish and finalize release build
-"""
 
 # Function to create test files if they don't exist
 def setup_test_files():
@@ -46,20 +32,18 @@ def setup_test_files():
 
     os.makedirs(OUTPUT_FOLDER)  # Recreate an empty test output folder
 
-    if not os.path.exists(f"{OUTPUT_FOLDER}{SPRINT_PLAN_FILE}"):
-        with open(f"{OUTPUT_FOLDER}{SPRINT_PLAN_FILE}", "w", encoding="utf-8") as f:
-            f.write(TEST_SPRINT_PLAN_CONTENT)
-
-    for sprint in ["Sprint 1", "Sprint 2", "Sprint 3"]:
-        sprint_file_prefix = sprint.lower().replace(" ", "_")
-        with open(f"{OUTPUT_FOLDER}{sprint_file_prefix}_requirements.md", "w", encoding="utf-8") as f:
-            f.write(f"Requirements for {sprint}")
-        with open(f"{OUTPUT_FOLDER}{sprint_file_prefix}_deliverables.md", "w", encoding="utf-8") as f:
-            f.write(f"Deliverables for {sprint}")
-        with open(f"{OUTPUT_FOLDER}{sprint_file_prefix}_qa_report.md", "w", encoding="utf-8") as f:
-            f.write(f"QA report for {sprint}")
-        with open(f"{OUTPUT_FOLDER}{sprint_file_prefix}_acceptance_report.md", "w", encoding="utf-8") as f:
-            f.write(f"Acceptance report for {sprint}")
+    with open(f"{OUTPUT_FOLDER}requirements.md", "w", encoding="utf-8") as f:
+        f.write(f"Requirements")
+    with open(f"{OUTPUT_FOLDER}game_design_doc.md", "w", encoding="utf-8") as f:
+        f.write(f"Deliverable for game design")
+    with open(f"{OUTPUT_FOLDER}game.ink", "w", encoding="utf-8") as f:
+        f.write(f"Deliverable for game code")
+    with open(f"{OUTPUT_FOLDER}background.png.txt", "w", encoding="utf-8") as f:
+        f.write(f"Deliverable for background image")
+    with open(f"{OUTPUT_FOLDER}qa_report.md", "w", encoding="utf-8") as f:
+        f.write(f"QA report")
+    with open(f"{OUTPUT_FOLDER}acceptance_report.md", "w", encoding="utf-8") as f:
+        f.write(f"Acceptance report")
 
 def evaluate_report(report_file):
     """Stub function to simulate report evaluation for testing, prints the length of the file."""
@@ -83,6 +67,7 @@ if __name__ == "__main__":
     # Initialize Orchestrator with stubbed teams
     orchestrator = Orchestrator(
         teams=stubbed_teams,
+        find_potential_reports=find_potential_reports, # use real find potential reports, to test this
         evaluate_report=evaluate_report,
         output_folder=OUTPUT_FOLDER,
         use_agno_logger=False

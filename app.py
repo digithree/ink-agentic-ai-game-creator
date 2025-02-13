@@ -1,26 +1,22 @@
 from agno.agent import Agent
 from agno.utils.log import logger
-from agno.tools.shell import ShellTools
 from agno.tools.file import FileTools
-from agno.tools.duckduckgo import DuckDuckGoTools
-from agno.tools.dalle import DalleTools
-from agno.tools.csv_toolkit import CsvTools
-from agno.tools.python import PythonTools
-from agno.tools.wikipedia import WikipediaTools
+#from agno.tools.dalle import DalleTools
 #from agno.models.ollama import Ollama
 from agno.models.openai import OpenAIChat
 #from agno.models.anthropic import Claude
+from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, find_potential_reports, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result
 from pathlib import Path
-from orchestrator import Orchestrator
-import openai
 import os
+import glob
 
 enable_debug=False
+enable_reasoning=False
 
 # "Develop a high-quality text-based narrative game using Ink, incorporating branching storylines and engaging player choices."
-user_input = input("Write your CEO project directive statement: ")
+user_input = input("Write your customer project directive statement: ")
 if user_input == "":
-    user_input = "Create a game prototype with the following idea: The life of an ant that becomes sentient and decides to go on a journey to discover the meaning of life."
+    user_input = "Create a game prototype with the following idea: A romance between a hardworking cafe owner (female) and a spirit that haunts the new cafe building she inherited from a relative. The player plays the cafe owner."
     print(f"Using default input: {user_input}")
 
 openai_model = "gpt-4o"
@@ -29,51 +25,10 @@ openai_model = "gpt-4o"
 #llm=OpenAIChat(id=openai_model)
 #llm=Claude(id="claude-3-5-sonnet-latest")
 
-output_dir = Path("output/")
+output_path = Path("output/")
 
 with open('ink_guide.md', 'r') as f:
     ink_guide = f.read()
-
-with open('company_overview_memo.md', 'r') as f:
-    company_overview = f.read()
-
-
-# --- Utility Functions ---
-
-def evaluate_report(report_file):
-    """Reads a QA report file and determines whether the result is PASS or FAIL using OpenAI."""
-    
-    if not os.path.exists(report_file):
-        logger.error(f"❌ Error: report file `{report_file}` not found, failing by default.")
-        return "FAIL"
-
-    with open(report_file, "r", encoding="utf-8") as file:
-        report_content = file.read()
-
-    prompt = (
-        "You are an AI system that strictly evaluates a assessment report.\n"
-        "Read the following QA report and determine if the final outcome is PASS or FAIL.\n"
-        "Respond with strictly either the word PASS or FAIL, and nothing else.\n\n"
-        f"QA Report:\n{report_content}\n\n"
-        "Final Evaluation:"
-    )
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "system", "content": prompt}],
-        max_tokens=5,  # Ensures only "PASS" or "FAIL" is returned
-        temperature=0  # Ensures deterministic output
-    )
-
-    result = response["choices"][0]["message"]["content"].strip()
-    
-    if result not in ["PASS", "FAIL"]:
-        raise ValueError(f"Unexpected AI response: {result}")
-
-    return result
-
-# Example usage
-# print(evaluate_qa_report("sprint_1_qa_report.md"))  # Should return either "PASS" or "FAIL"
 
 
 # Example individual agent definition
@@ -84,7 +39,7 @@ agent_name = Agent(
     expected_output="Specific output expected from the agent, specifying format if needed but not filenames, etc.",
     # none or more of the following tools
     tools=[
-        FileTools(base_dir=output_dir), # IMPORTANT: can read and write files, e.g. read documentation, write documents, code, etc.
+        FileTools(base_dir=output_path), # IMPORTANT: can read and write files, e.g. read documentation, write documents, code, etc.
         DalleTools(), # ESSENTIAL: genrate images with DALL-E
         DuckDuckGoTools(), # web search
         PythonTools(), # write Python files, run Python code, use pip to install packages
@@ -101,244 +56,240 @@ agent_name = Agent(
 '''
 
 # ---- PROJECT PLANNING AGENTS ----
-project_owner = Agent(
-    name="Project Owner",
-    role="Oversees the project's vision and defines high-level objectives. Ensures the direction aligns with business goals and creative intent, providing strategic guidance throughout development. Align all your efforts with the company memo:\n\n" + company_overview,
-    expected_output="A well-defined project goal with clear priorities, scope, and constraints.",
-    tools=[FileTools(base_dir=output_dir), DuckDuckGoTools()],
+narrative_writer = Agent(
+    name="Narrative game story writer",
+    role="The narrative game story writer creates immersive, interactive stories, developing characters, dialogue, and branching narratives that adapt to player choices. The write in complete scenes in a high level of detail.",
+    expected_output="A series of scene overviews, with each scene about 200 words each",
+    tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
+    #reasoning=enable_reasoning,
+    markdown=True,
+    structured_outputs=True,
+    show_tool_calls=True,
 )
 
-project_manager = Agent(
-    name="Project Manager",
-    role="Breaks down the project into sprint milestones and ensures team coordination. Tracks dependencies, manages deadlines, and ensures deliverables align with the defined project roadmap. Align all your efforts with the company memo:\n\n" + company_overview,
-    expected_output="A structured sprint plan detailing milestones, deliverables, and dependencies.",
-    tools=[FileTools(base_dir=output_dir), CsvTools()],
+game_designer = Agent(
+    name="Game Designer",
+    role="Provides a structured plan on how game mechanics should be implemented in the Ink scripting system. Advises on scene structuring, branching choices, and interactive pacing.",
+    expected_output="""A structured plan of each scene, based on the narrative game story. Consider this format:
+```
+# Narrative Structure for a Slice-of-Life Fetch Quest  
+
+## Scene 1: The Coffee Shop  
+- The player arrives at their favorite coffee shop on a chilly morning.  
+- The smell of fresh espresso fills the air, and the usual hum of conversation surrounds them.  
+- Mia, the barista, is behind the counter, but she looks unusually stressed.  
+- A choice: **Talk to Mia or Order a coffee first**.  
+  - If the player talks to Mia, she sighs and hesitates before sharing what's wrong.  
+  - If the player orders coffee first, she tries to hide her frustration but still seems distracted.  
+
+## Scene 2: Mia's Problem  
+- If the player engages Mia, she admits she's run out of oat milk, and one of the regulars is waiting on their usual order.  
+- She explains that her supplier won't restock until tomorrow, and she doesn't want to disappoint the customer.  
+- A choice: **Offer to get oat milk or just sympathize**.  
+  - If the player offers to help, she looks relieved and suggests trying the corner store.  
+  - If the player sympathizes but does nothing, she thanks them but continues to look stressed. The player goes about their day as usual.  
+
+## Scene 3: Finding the Oat Milk  
+- If the player takes the quest, they head to the corner store, a small, cluttered shop a few blocks away.  
+- The shelves are half-empty, and the store is unusually busy.  
+- A choice: **Check the dairy section or ask the cashier**.  
+  - If they check the shelves, they might find the last carton of oat milk.  
+  - If they ask the cashier, they learn that oat milk sold out earlier that morning, but there might be some at the supermarket.  
+
+## Scene 4: The Decision at the Store  
+- If the player finds oat milk, they can take it and return to Mia immediately.  
+- If the store is out, the player must decide:  
+  - **Go to the supermarket**: It's further away but almost guaranteed to have oat milk.  
+  - **Give up and return to Mia empty-handed**.  
+- If they go to the supermarket, they find plenty of oat milk but have spent extra time.  
+
+## Scene 5: Returning to Mia  
+- If the player brings back oat milk, Mia lights up with relief. She thanks them enthusiastically and hands them a free coffee as a reward.  
+- If the player returns without oat milk, Mia sighs but nods in appreciation for the effort.  
+- If the player never tried to help, Mia makes do without and the scene simply moves on.  
+
+## End of Story  
+- The player leaves the coffee shop, either feeling like they made a difference or simply going about their usual routine.  
+- The scene ends based on their level of involvement in Mia's problem.  
+```
+""",
+    tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
+    #reasoning=enable_reasoning,
+    markdown=True,
+    structured_outputs=True,
+    show_tool_calls=True,
 )
 
-market_researcher = Agent(
-    name="Market Researcher",
-    role="Analyzes industry trends, competitor offerings, and player expectations. Synthesizes insights from external sources to refine product direction and identify unique selling points.",
-    expected_output="A market research report including industry trends, competitor analysis, and user expectations.",
-    tools=[DuckDuckGoTools(), WikipediaTools()],
-    model=OpenAIChat(id=openai_model),
-)
-
-# ---- REQUIREMENTS GATHERING & ASSESSMENT AGENTS ----
-product_owner_writer = Agent(
-    name="Product Owner Requirements Writer",
-    role="Translates high-level project goals into structured feature requirements. Works closely with designers and developers to ensure clarity and feasibility of implementation.",
-    expected_output="A formal requirements document detailing features, constraints, and expected outcomes.",
-    tools=[FileTools(base_dir=output_dir)],
-    model=OpenAIChat(id=openai_model),
-)
-
-product_owner_evaluator = Agent(
-    name="Product Owner Evaluator",
-    role="Reviews completed deliverables against requirements. Ensures features meet project goals, adhere to specifications, and maintain consistency within the overall vision.",
-    expected_output="An evaluation report comparing deliverables to original requirements with feedback on any gaps.",
-    tools=[FileTools(base_dir=output_dir)],
-    model=OpenAIChat(id=openai_model),
-)
-
-game_designer_requirements = Agent(
-    name="Game Designer Requirements Helper",
-    role="Defines gameplay mechanics, narrative structure, and interaction systems. Ensures gameplay is engaging and aligns with the project's themes and goals.",
-    expected_output="A game design document outlining core mechanics, balance considerations, and player interactions.",
-    tools=[FileTools(base_dir=output_dir)],
-    model=OpenAIChat(id=openai_model),
-)
-
-game_designer_code_advisor = Agent(
-    name="Game Designer Code Advisor",
-    role="Provides structured guidance on how game mechanics should be implemented in the Ink scripting system. Advises on scene structuring, branching choices, and interactive pacing.",
-    expected_output="Annotated Ink script structure recommendations or pseudocode for implementing gameplay.",
-    tools=[FileTools(base_dir=output_dir), PythonTools()],
-    model=OpenAIChat(id=openai_model),
-)
-
-user_focus_group_requirements = Agent(
-    name="User Focus Group Requirements Helper",
-    role="Simulates a range of player perspectives to anticipate usability issues and engagement factors. Provides insights to refine requirements for an optimal player experience.",
-    expected_output="A user perspective report suggesting refinements to gameplay and user experience requirements.",
-    model=OpenAIChat(id=openai_model),
-)
-
-user_focus_group_evaluator = Agent(
-    name="User Focus Group Evaluator",
-    role="Evaluates completed deliverables from a player perspective. Assesses if the content is engaging, intuitive, and aligns with user expectations based on initial goals.",
-    expected_output="A usability evaluation report listing engagement strengths, pain points, and player reception insights.",
-    model=OpenAIChat(id=openai_model),
-)
-
-ux_designer = Agent(
-    name="UX Designer",
-    role="Designs interface flows, interactions, and player feedback systems. Ensures intuitive and accessible navigation across the game's narrative structure.",
-    expected_output="A UX specification document with wireframes, interaction models, and accessibility considerations.",
-    tools=[FileTools(base_dir=output_dir), DalleTools()],
-    model=OpenAIChat(id=openai_model),
-)
-
-# ---- DEVELOPMENT AGENTS ----
 ink_script_developer = Agent(
     name="Ink Script Developer",
-    role="Writes structured Ink scripts to implement the game’s branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide:\n\n" + ink_guide,
-    expected_output="A well-structured Ink script implementing interactive narrative and state logic.",
-    tools=[FileTools(base_dir=output_dir), PythonTools(), ShellTools()],
+    role="Writes structured Ink scripts to implement the game's branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide (customise for the theme):\n\n" + ink_guide,
+    expected_output="A well-structured Ink script (.ink) implementing interactive narrative and state logic. Always saves its .ink file to disk.",
+    tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
-)
-
-background_artist = Agent(
-    name="Background Artist",
-    role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with UX designers and writers to align visual storytelling with narrative tone.",
-    expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
-    tools=[FileTools(base_dir=output_dir), DalleTools()],
-    model=OpenAIChat(id=openai_model),
-)
-
-# ---- QUALITY ASSURANCE AGENTS ----
-software_tester = Agent(
-    name="Software Tester",
-    role="Tests Ink scripts and game code for functional correctness, debugging syntax errors and unintended narrative flows. Ensures a smooth and error-free experience for players.",
-    expected_output="A bug report detailing logic issues, script errors, and potential narrative inconsistencies.",
-    tools=[FileTools(base_dir=output_dir), PythonTools()],
-    model=OpenAIChat(id=openai_model),
-)
-
-game_tester = Agent(
-    name="Game Tester",
-    role="Performs playtests to evaluate gameplay balance, progression flow, and overall experience. Identifies inconsistencies in storytelling, pacing, and player engagement.",
-    expected_output="A gameplay test report with feedback on narrative cohesion, interaction pacing, and engagement quality.",
-    tools=[FileTools(base_dir=output_dir)],
-    model=OpenAIChat(id=openai_model),
-)
-
-# --- Teams ---
-
-# Example team agent definition
-'''
-team_name = Agent(
-    name="Team Name",
-    team=[agent_1, agent_2, agent_3], # etc.
-    instructions=[ # instructions should be written carefully so they apply to the whole team and any task can be picked up by the team generally
-        "Team must do this task",
-        "Team should pay attention to this",
-        "Essential thing for team to know"
-    ],
-    # don't change the below
-    model=OpenAIChat(id=openai_model),
-    reasoning=True,
+    #reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
 )
-'''
 
-# ---- PROJECT PLANNING TEAM ----
-project_planning_team = Agent(
-    name="Project Planning Team",
-    team=[project_owner, project_manager, market_researcher],
-    instructions=[
-        "Break down the high-level project goal into a structured plan with milestones and deliverables.",
-        "Ensure the project roadmap aligns with market trends, business goals, and feasibility constraints.",
-        "Gather relevant market data to support planning decisions and feature prioritization.",
-    ],
-    model=OpenAIChat(id=openai_model),
-    reasoning=True,
-    markdown=True,
-    structured_outputs=True,
-    show_tool_calls=True,
-    debug_mode=enable_debug,
-)
-
-# ---- REQUIREMENTS GATHERING TEAM ----
-requirements_gathering_team = Agent(
-    name="Requirements Gathering Team",
-    team=[product_owner_writer, game_designer_requirements, user_focus_group_requirements, ux_designer],
-    instructions=[
-        "Define detailed feature requirements based on the sprint milestone and project goals.",
-        "Ensure that all requirements consider user experience, engagement, and feasibility of implementation.",
-        "Game-specific requirements must include mechanics, progression, and narrative interaction details.",
-        "User insights should be incorporated to refine and improve the requirement specifications.",
-    ],
-    model=OpenAIChat(id=openai_model),
-    reasoning=True,
-    markdown=True,
-    structured_outputs=True,
-    show_tool_calls=True,
-    debug_mode=enable_debug,
-)
-
-# ---- DEVELOPMENT TEAM ----
 development_team = Agent(
     name="Development Team",
-    team=[ink_script_developer, game_designer_code_advisor, background_artist],
+    team=[ink_script_developer], #background_artist
     instructions=[
-        "Develop deliverables based on the approved requirements, ensuring alignment with project vision.",
-        "Ink Script Developer must create well-structured, interactive scripts that match design specifications.",
-        "Game Designer Code Advisor should provide structured guidance to ensure gameplay mechanics function correctly.",
-        "Background Artist should create environment visuals that match the tone and aesthetic of the game.",
-        "Ensure assets are created in a modular way to allow for iteration and expansion.",
+        "Read the game scene overview document by opening the .md file with the tools. Understand the story and scenes described in the document. "
+        f"Bear in mind the user prompt: \"{user_input}\". "
+        "Ink Script Developer must create well-structured, interactive scripts that match design specifications. "
+        "The game script must cover all scenes in the narrative overview. "
+        "All scenes should be written in detailed prose of several lines, not being too brief, of about a paragraph in length. "
+        "The game script must be at least 10 choices deep in structure. "
+        "The game script must be based on the design doc. "
+        "Must save script to .ink file. ",
+        #"Background Artist should create environment visuals that match the tone and aesthetic of the game.",
     ],
     model=OpenAIChat(id=openai_model),
-    reasoning=True,
+    reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
     debug_mode=enable_debug,
 )
 
-# ---- QUALITY ASSURANCE TEAM ----
-quality_assurance_team = Agent(
-    name="Quality Assurance Team",
-    team=[software_tester, game_tester],
+# background_artist = Agent(
+#     name="Background Artist",
+#     role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with Ink Script Developer to obtain filenames for graphics assets deliverables, and with writers to align visual storytelling with narrative tone.",
+#     expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
+#     tools=[FileTools(base_dir=output_path), DalleTools()],
+#     model=OpenAIChat(id=openai_model),
+# )
+
+solo_software_tester = Agent(
+    name="Software Tester",
+    role="Tests Ink scripts and game code for functional correctness, syntax errors, and running test tools, and looking for unintended narrative flows or logical errors. Do not comment on positive aspects of the game, only on any issues. If no issues found, keep note brief.",
+    tools=[FileTools(base_dir=output_path), get_ink_error_report, get_ink_stats_report, get_ink_playtest_report],
+    model=OpenAIChat(id=openai_model),
     instructions=[
         "Thoroughly test all deliverables to ensure functionality, quality, and adherence to requirements.",
         "Software Tester must check for logic errors, syntax issues, and unintended narrative breaks in the Ink script.",
-        "Game Tester should playtest deliverables, providing feedback on pacing, interaction design, and engagement.",
-        "Document all identified issues and ensure reports provide clear feedback for iterative improvements.",
+        "Always saves report to file. Saving a report to file is a MANDATORY part of the this job."
     ],
-    model=OpenAIChat(id=openai_model),
-    reasoning=True,
+    expected_output="""A report in the following format and save to disk as `qa_report.md`:
+```
+# QA report
+
+## Bugs
+
+[List errors]
+
+## Warnings
+
+[List errors]
+
+## Narrative quality
+
+[Detail narrative quality]
+
+## Conclusion
+
+Result: [PASS|FAIL]
+```
+    """,
+    ##reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
     debug_mode=enable_debug,
 )
 
-# ---- ACCEPTANCE TESTING TEAM ----
-acceptance_testing_team = Agent(
-    name="Acceptance Testing Team",
-    team=[product_owner_evaluator, user_focus_group_evaluator],
-    instructions=[
-        "Evaluate whether deliverables meet requirements and align with the intended project vision.",
-        "Product Owner Evaluator should compare deliverables against written specifications and identify discrepancies.",
-        "User Focus Group Evaluator should assess usability, player engagement, and narrative coherence.",
-        "Provide detailed feedback on improvements before final acceptance of the deliverables.",
-    ],
-    model=OpenAIChat(id=openai_model),
-    reasoning=True,
-    markdown=True,
-    structured_outputs=True,
-    show_tool_calls=True,
-    debug_mode=enable_debug,
-)
+output_folder="output/"
+max_task_retry=5
+
+def development_iteration():
+    """Runs a single iteration of the development cycle."""
+    qa_feedback = ""
+    if os.path.exists(output_folder + "qa_report.md"):
+        with open(output_folder + "qa_report.md", 'r') as f:
+            qa_feedback = f"QA feedback: {f.read()}\n"
+        old_ink_files = glob.glob(f"{output_folder}*.old")
+        for old_file in old_ink_files:
+            with open(old_file, 'r') as f:
+                qa_feedback += f"\n--- OLD file to fix, {os.path.basename(old_file)}:\n\n```ink\n{f.read()}```"
+    retry_until_folder_changes(
+        task_func=lambda: (
+            development_team.print_response(
+                f"Develop Ink script for game, given the narrative overview already created (check files in folder). "
+                f"Save the resulting script to a .ink file. "
+                f"{qa_feedback}",
+                stream=True,
+                show_full_reasoning=True
+            )
+        ),
+        folder_path=output_folder,
+        max_retries=max_task_retry,
+        task_desc="🛠️ Writing Ink script",
+        log_func=logger.info
+    )
+
+    # remove previous QA and acceptance testing reports
+    [os.remove(output_folder + f) for f in ['qa_report.md', 'acceptance_testing_report.md'] if os.path.exists(output_folder + f)]
+
+    retry_until_success(
+        task_func=lambda: (
+            solo_software_tester.print_response(
+                f"Test Ink script .ink file. Identify any functional issues, narrative inconsistencies, or usability problems. "
+                f"Generate a QA report and save the file `qa_report.md`. ",
+                stream=True,
+                show_full_reasoning=True
+            )
+        ),
+        success_check_func=lambda: os.path.exists(os.path.join(output_folder, "qa_report.md")),
+        max_retries=max_task_retry,
+        task_desc="🔍 Performing quality assurance",
+        log_func=logger.info
+    )
+
+    qa_status = evaluate_report(output_folder + "qa_report.md")
+    if qa_status == "FAIL":
+        logger.info(f"❌ QA failed development iteration.\n")
+        return "FAIL"
+
+    logger.info(f"✅ Quality Assurance Passed.\n")
+
+    logger.info(f"✅ Development is completed.\n")
+
+    return "PASS"
 
 if __name__ == "__main__":
-    teams = {
-        "project_planning": project_planning_team,
-        "requirements_gathering": requirements_gathering_team,
-        "development": development_team,
-        "quality_assurance": quality_assurance_team,
-        "acceptance_testing": acceptance_testing_team,
-    }
+    print("\n🚀 Starting Process...\n")
 
-    orchestrator = Orchestrator(teams=teams, evaluate_report=evaluate_report)
+    retry_until_folder_changes(
+        task_func=lambda: (
+            narrative_writer.print_response(
+                f"Write a narrative overview given the following brief: {user_input}"
+                f"Save the narrative overview to a file. ",
+                stream=True,
+                show_full_reasoning=True
+            )
+        ),
+        folder_path=output_folder,
+        max_retries=max_task_retry,
+        task_desc="✏️ Writing narrative overview",
+        log_func=logger.info
+    )
 
-    print("\n🚀 Starting production run for Orchestrator...\n")
+    retry_until_success_result(
+        task_func=lambda: development_iteration(),
+        success_check_func=lambda result: result == "PASS",
+        max_retries=max_task_retry,
+        task_desc="🚀 Development iteration",
+        log_func=logger.info,
+        do_between_reties_func=lambda: (
+            [os.remove(f) for f in glob.glob(f"{output_folder}*.old")],
+            [os.remove(f) for f in glob.glob(f"{output_folder}*.ink.json")],
+            [os.rename(f,f.replace(".ink", ".old")) for f in glob.glob(f"{output_folder}*.ink")]
+        )
+    )
 
-    result = orchestrator.run_project(user_input)
+    print(f"\n✅ Run complete. Check output folder: {output_folder}")
 
-    print("\n✅ Run complete. Final result:")
-    print(result)

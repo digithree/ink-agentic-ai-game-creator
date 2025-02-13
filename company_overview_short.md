@@ -1,1 +1,0 @@
-We create narrative-driven games using Ink scripting, enhanced by an AI-assisted development system that streamlines story structure, branching dialogue, and quality assurance. Our mission is to innovate interactive storytelling.

@@ -1,0 +1,42 @@
+# UX Specification Document for Narrative-Driven Game
+
+## Wireframes
+
+1. **Main Menu Screen**:
+   - Displays key options such as "Continue", "New Game", "Settings", and "Exit".
+   - [Main Menu Wireframe](https://oaidalleapiprodscus.blob.core.windows.net/private/org-W9jR4j7TKcl4bL0oTGUMXzsB/user-uudt55ADHNDqpvDI7Qb1GXzD/img-Mu6uwX8NiWsxevuLTBcqXb0C.png?st=2025-02-12T11%3A30%3A55Z&se=2025-02-12T13%3A30%3A55Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-02-11T15%3A58%3A30Z&ske=2025-02-12T15%3A58%3A30Z&sks=b&skv=2024-08-04&sig=ti41zos9oLm8ArzvljSN%2BTPfWUrF0e74983Rraf22DY%3D)
+
+2. **Narrative Scene Interface**:
+   - Features dialog text, character image, decision buttons, and dialogue history option.
+   - [Narrative Scene Wireframe](https://oaidalleapiprodscus.blob.core.windows.net/private/org-W9jR4j7TKcl4bL0oTGUMXzsB/user-uudt55ADHNDqpvDI7Qb1GXzD/img-c07wPIJAWJIrFM0yYFZe0MJi.png?st=2025-02-12T11%3A31%3A04Z&se=2025-02-12T13%3A31%3A04Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-02-12T04%3A51%3A26Z&ske=2025-02-13T04%3A51%3A26Z&sks=b&skv=2024-08-04&sig=hHOXiFH%2BByQwbWWDrBkwl6VV/%2B9i/kx6ZJBt%2BPc53P8%3D)
+
+3. **Decision Point Screen**:
+   - Illustrates choice options, feedback mechanisms, and branching path overview.
+   - [Decision Point Wireframe](https://oaidalleapiprodscus.blob.core.windows.net/private/org-W9jR4j7TKcl4bL0oTGUMXzsB/user-uudt55ADHNDqpvDI7Qb1GXzD/img-40NUlAItx456seZ35TXhTR2h.png?st=2025-02-12T11%3A31%3A16Z&se=2025-02-12T13%3A31%3A16Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-02-12T09%3A56%3A22Z&ske=2025-02-13T09%3A56%3A22Z&sks=b&skv=2024-08-04&sig=u3ZywS7osjaBf5deRqug8d9lD/urLOUsUjE32Z9gguI%3D)
+
+## Interaction Models
+
+### Navigation
+- Users begin at the main menu.
+- "Continue" takes the player to the last saved point in the story.
+- "New Game" starts the narrative from the beginning.
+- "Settings" provides accessibility and other game options.
+
+### Decision Interaction
+- Choices presented with clear visual buttons.
+- Branching paths allow users to see potential narrative impacts.
+
+## Player Feedback Systems
+
+- **Visual Cues**: Highlight dialog options and main story progress.
+- **Auditory Feedback**: Use subtle sounds for decision confirmation.
+- **Progress Indicators**: Show completion percentage or chapters completed.
+
+## Accessibility Considerations
+
+- **Text Scaling**: Support for larger font sizes for better readability.
+- **Color Contrast**: Options to enhance visibility for colorblind users.
+- **Simplified Controls**: Customizable controls to ease navigation for motor impairments.
+
+## Conclusion
+This document outlines the core UI flows and interaction designs, ensuring an engaging and accessible user experience in the narrative-driven game.
