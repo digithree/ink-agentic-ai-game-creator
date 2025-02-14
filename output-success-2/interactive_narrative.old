@@ -1,0 +1,133 @@
+// Variables
+VAR player_name = "Traveler"
+VAR has_key = false
+VAR discovered_ancient_tome = false
+
+// Start of the game
+# changeBackground: chamber.png
+You wake up in a dimly illuminated chamber, its walls adorned with cryptic symbols barely visible through the shadows cast by flickering candlelight. An enigmatic figure stands before you, cloaked in a billowing robe that whispers secrets as it moves.
+
+"You have finally awoken," intones the old man, his voice a blend of authority and empathy. "Do you remember who I am?"
+
++ "Yes, you are... the Watcher?" -> lie_answer
++ "Yes, you are the Old Sage." -> lie_answer
++ "No..." -> honest_answer
+
+=== lie_answer ===
+"Yes, you are the Old Sage."
+
+\n
+
+He creases his brow, gauging your response for truth. "The Watcher? The Old Sage? Mere figments of stories. You do not know me, yet with such ease do you speak those words." His eyes seem to peer into your very soul.
+
+"You find yourself in this place, bound by the weight of your own fabrications."
+
+# changeBackground: chamber.png
+-> ask_location
+
+=== honest_answer ===
+The old man nods, a hint of approval crossing his ancient visage. "Honesty, a rarity in these tangled webs. Admitting one's ignorance is the first flicker of enlightenment."
+
+# changeBackground: chamber.png
+-> ask_location
+
+=== ask_location ===
+Taking a measured step back, the old man gestures around the almighty gloom. "Observe closely, traveler. This is the liminal space, a nexus of forlorn destinies and seekers of truths."
+
+A slow wave of his hand encompasses every corner of the chamber. "Confront your decisions with wisdom, for the path you tread is shrouded in mystery."
+
+# changeBackground: chamber.png
++ "Explore without delay." -> go_forest
++ "Examine the room with care." -> search_room
+
+=== search_room ===
+"You choose discernment over haste," the old man remarks, watching as your eyes survey the chamber.
+
+Amidst scattered remnants of forgotten pursuits, a glimmer catches your gaze beneath the dust-coated corner. Bending closer, your fingers grasp a small, rusted key.
+
+~ has_key = true
+The cold metal weighs heavily in your palm, its hidden significance yet to unravel.
+
+You also notice an ancient tome, its pages crumbling yet whispering the promise of forgotten lore.
+
+# changeBackground: chamber.png
++ "Take the ancient tome." -> take_tome
++ "Proceed to the forest." -> go_forest
+
+=== take_tome ===
+The tome's cover is inscribed with symbols akin to those on the chamber walls, invoking a deep and mystifying resonance within.
+
+~ discovered_ancient_tome = true
+As you cradle it, the old man regards you silently, acknowledging the path you have awakened.
+
+# changeBackground: chamber.png
+-> go_forest
+
+=== go_forest ===
+# changeBackground: forest.png
+Crossing the threshold, you are enveloped by a forest beset by a dense mist, the air heavy with the scent of moss and age-old secrets. Shadows dance amongst the towering trees, whispering tales of ancient times.
+
+The old man follows, his presence a silent witness to your unfolding journey. "Beyond this veil of fog lies the uncharted. What revelations await, only fortune can decide..."
+
+{has_key:
+    He marks your watchful grip on the rusted key. "Clutch it tight; you'll find it to be of service when least expected."
+- else:
+    He observes your empty hands with a solemn expression. "You traverse with naught but your courage. Might you have forsaken something pivotal in that chamber?"
+}
+
+{discovered_ancient_tome:
+    The tome rustles faintly in your possession, its presence a comforting enigma. "Guard the knowledge it holds," the old man intones, "for it may illuminate your path in darkness."
+}
+
+# changeBackground: forest.png
++ "Venture deeper into the forest." -> discover_river
++ "Search for a sanctuary." -> find_shelter
+
+=== discover_river ===
+# changeBackground: river.png
+Deeper within the towering verdure, the soothing murmur of running water beckons you forth. A river flows graceful and clear, cradling tales of the forest's ancient heart.
+
+You pause, senses absorbing the serene whispers.
+
+# changeBackground: river.png
++ "Follow the river's edge." -> river_journey
++ "Drink from the river." -> drink_decision
+
+=== find_shelter ===
+# changeBackground: ruins.png
+The forest reveals a crumbling structure, perhaps a remnant of civilizations long past. Vines caress its withered stone, a testament to the relentless embrace of time.
+
+Stepping inside, you feel the walls hum with memories, inviting you to stay.
+
+# changeBackground: ruins.png
++ "Seek refuge for a while." -> rest_in_ruins
++ "Continue your journey." -> river_journey
+
+=== river_journey ===
+The path by the river resembles a corridor of mysteries, each step forward echoing your growing resolve. As the water courses beside you, it mirrors your reflections with serene clarity.
+
+The journey is only beginning, promising twists and tales yet untold...
+
+# changeBackground: forest.png
+-> continue_adventure
+
+=== drink_decision ===
+The water cools your lips as you take a cautious sip, invigorating and quenching. Yet with it comes the strange tingling of anticipation, as if you have imbibed more than mere liquid.
+
+# changeBackground: river.png
+-> river_journey
+
+=== rest_in_ruins ===
+Wrapped in the embrace of ancient stone, you allow yourself a moment of solace. The silence is broken only by distant rustles, nurturing your weary soul with a semblance of peace.
+
+# changeBackground: ruins.png
+-> river_journey
+
+=== continue_adventure ===
+# changeBackground: forest.png
+Onward you move, propelled by the pulse of the unknown. The old man's eyes linger on you, an eternal presence bound to witness every choice and its ramifications.
+
+"We shall see what the morrow holds," he utters softly, shadows anointing his path...
+
+# changeBackground: forest.png
+-> END

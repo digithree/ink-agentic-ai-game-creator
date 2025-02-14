@@ -2,6 +2,51 @@ from agno.utils.log import logger
 from inklecate_permutation_play_tester import test_ink_playthrough, playthrough_data_report
 import openai
 import os
+import re
+
+def ink_files_log_stats(folder_path):
+    """Return detailed stats on all .ink files in the given folder."""
+    output = ""
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".ink"):
+            file_path = os.path.join(folder_path, file_name)
+            output += f"--- {file_name}\n"
+            output += playthrough_data_report(
+                data=test_ink_playthrough(file_path),
+                verbose=True
+            ) + "\n"
+            output += subprocess.run(
+                ["inklecate", "-s", file_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False
+            ).strip() + "\n"
+
+    return output
+
+def extract_change_background_filenames(filename):
+    """Extracts unique filenames from lines starting with '# changeBackground: ' in a given file."""
+    filenames = set()  # Use a set to ensure uniqueness within a file
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            match = re.match(r"^# changeBackground:\s*(.+)", line)
+            if match:
+                filenames.add(match.group(1))  # Add to set to remove duplicates
+    return filenames  # Return as a set
+
+def ink_files_extract_change_background_filenames(folder_path):
+    """Processes all .ink files in the given folder and returns a unique list of filenames."""
+    all_filenames = set()  # Use a set to collect unique filenames across all files
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".ink"):
+            file_path = os.path.join(folder_path, file_name)
+            all_filenames.update(extract_change_background_filenames(file_path))  # Merge unique filenames
+
+    return list(all_filenames)  # Convert final set to a list
+
 
 def get_folder_snapshot(path):
     """Returns a snapshot of the folder containing file names, their modification times, and sizes."""
@@ -58,7 +103,7 @@ def retry_until_success(task_func, success_check_func, max_retries, task_desc, l
     :raise Exception: If the task fails after the maximum number of retries.
     """
     for attempt in range(1, max_retries + 1):
-        log_func(f"{'🔄 ' if attempt > 0 else ''}{task_desc}, attempt {attempt}/{max_retries}...")
+        log_func(f"{'🔄 ' if attempt > 1 else ''}{task_desc}, attempt {attempt}/{max_retries}...")
         task_func()  # Execute the task
         if success_check_func():  # Check if it succeeded
             return
@@ -80,13 +125,13 @@ def retry_until_success_result(task_func, success_check_func, max_retries, task_
     :raise Exception: If the task fails after the maximum number of retries.
     """
     for attempt in range(1, max_retries + 1):
-        log_func(f"{'🔄 ' if attempt > 0 else ''}{task_desc}, attempt {attempt}/{max_retries}...")
+        if attempt > 1 and do_between_reties_func:
+            do_between_reties_func()
+        log_func(f"{'🔄 ' if attempt > 1 else ''}{task_desc}, attempt {attempt}/{max_retries}...")
         result = task_func()  # Execute the task
         if success_check_func(result):  # Check if it succeeded
             return
         log_func(f"⚠️ Failed attempt {attempt} for task {task_desc}. Retrying...")
-        if do_between_reties_func:
-            do_between_reties_func()
     
     log_func(f"❌ Failed task: {task_desc}")
     raise Exception(f"Task failed after {max_retries} attempts.")  # Task ultimately failed
@@ -189,6 +234,18 @@ def get_ink_stats_report(ink_file) -> str:
     Extracts statistics from an Ink script using inklecate, such as number of words, number of knots (labels),
     number of choices, etc.
     Returns the statistics as a string, with each stat on a new line.
+
+    inklecate -s {ink_file} returns
+    ```
+    Words: 493
+    Knots: 15
+    Stitches: 0
+    Functions: 0
+    Choices: 10
+    Gathers: 0
+    Diverts: 21
+    ```
+    which we can extract the stats we care about and evaluate.
     
     :param ink_file: The Ink script file to extract stats from.
     :return: Ink script stats as a string.
@@ -206,13 +263,26 @@ def get_ink_stats_report(ink_file) -> str:
         )
 
         stats = result.stdout.strip()
+        output = f"⚠️ Could not extract Inks script stats for '{ink_file}'."
         
         if stats:
-            logger.info(f"✅ Ink script stats for '{ink_file}':\n{stats}")
-        else:
-            logger.info(f"⚠️ Could not extract Inks script stats for '{ink_file}'.")
-
-        return stats
+            words_match = re.search(r"Words:\s+(\d+)", stats)
+            knots_match = re.search(r"Knots:\s+(\d+)", stats)
+            word_count = int(words_match.group(1)) if words_match else None
+            knot_count = int(knots_match.group(1)) if knots_match else None
+            word_fail_msg = None
+            knot_fail_msg = None
+            if word_count < 500:
+                word_fail_msg = f"Number of words {word_count} is below minimum of 500. REFACTOR CODE TO INCREASE WORD COUNT, EXPANDING THE NARRATIVE DETAIL!"
+            if knot_count < 10:
+                knot_fail_msg = f"Number of knots (labels) {knot_count} is below minimum of 10. REFACTOR CODE TO ADD MORE KNOTS (LABELS), I.E. TO ADD MORE CHOICE POINTS!"
+            output = f"👀 Ink script features QA report for '{ink_file}':\n"
+            if word_fail_msg or knot_fail_msg:
+                output += "❌ FAIL " + "\n❌ FAIL ".join(msg for msg in [word_fail_msg, knot_fail_msg] if msg is not None)
+            else:
+                output += "✅ PASS"
+        logger.info(output)
+        return output
 
     except Exception as e:
         logger.error(f"❌ Error running inklecate: {e}")

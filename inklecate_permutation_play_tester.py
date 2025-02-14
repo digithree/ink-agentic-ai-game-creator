@@ -55,7 +55,7 @@ def test_ink_playthrough(ink_file, debug_log=False):
                     queue.append((new_path, new_path_hashes))  # Track hashes along with path
 
     if debug_log:
-        print("\n✅ All complete paths explored!")
+        print("\n✅ All complete paths explored!\n")
     return (complete_paths, inf_paths)
 
 
@@ -157,44 +157,64 @@ def issues_to_str(issues):
         return "No issues"
     return f"Warnings: {issues['warnings']}, Errors: {issues['errors']}"
 
-def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, inf_loops_as_errors=False):
+def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, inf_loops_as_errors=False, verbose=False):
     completed_path_data, inf_path_data = data
-    output = ""
+    verbose_output = ""
+    default_output = ""
     acceptance = "✅ PASS, no syntax errors or warnings"
     path_length = "✅ Number of choices is enough to PASS"
     max_path_length = 0
+    default_output += f"➡️  Possible Story Paths Permutations: {len(completed_path_data)}\n"
+    count_paths_with_warnings = 0
+    count_paths_with_errors = 0
     if len(completed_path_data) > 0:
-        output += "➡️ Possible Story Paths:\n"
+        verbose_output += "➡️  Possible Story Paths:\n"
         for idx, path_data in enumerate(completed_path_data):
             path, issues = path_data
             if issues['errors'] > 0:
                 acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-            elif warnings_as_errors and issues['warnings'] > 0:
-                acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
+                count_paths_with_errors += 1
+            if issues['warnings'] > 0:
+                count_paths_with_warnings += 1
+                if warnings_as_errors:
+                    acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
             if len(path) > max_path_length:
                 max_path_length = len(path)
-            output += f"{idx + 1}. {list([int(choice) for choice in path])}, {issues_to_str(issues)}\n"
+            verbose_output += f"{idx + 1}. {list([int(choice) for choice in path])}, {issues_to_str(issues)}\n"
     else:
-        output += "❌ FAIL: CRITICAL ISSUE, no story paths can be completed successful!\n"
+        verbose_output += "❌ FAIL: CRITICAL ISSUE, no story paths can be completed successful!\n"
+        default_output += "❌ FAIL: CRITICAL ISSUE, no story paths can be completed successful!\n"
     if len(inf_path_data) > 0:
         if inf_loops_as_errors:
-            output += "⚠️ Infinite Loop Story Paths\n"
+            verbose_output += "⚠️ Infinite Loop Story Paths:\n"
+            default_output += f"⚠️ Infinite Loop Story Paths: {len(inf_path_data)}\n"
         else:
-            output += "🔃 Infinite Loop Story Paths\n"
+            verbose_output += "🔃 Infinite Loop Story Paths:\n"
+            default_output += f"🔃 Infinite Loop Story Paths: {len(inf_path_data)}\n"
         for idx, path_data in enumerate(inf_path_data):
             path, issues = path_data
             if issues['errors'] > 0:
+                count_paths_with_errors += 1
                 acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-            elif warnings_as_errors and issues['warnings'] > 0:
-                acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-            output += f"{idx + 1}. {list([int(choice) for choice in path])}, {issues_to_str(issues)}\n"
+            if issues['warnings'] > 0:
+                count_paths_with_warnings += 1
+                if warnings_as_errors:
+                    acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
+            verbose_output += f"{idx + 1}. {list([int(choice) for choice in path])}, {issues_to_str(issues)}\n"
         if inf_loops_as_errors:
-            output += "❌ FAIL: CRITICAL ISSUE, infinite loops are possible!\n"
+            verbose_output += "❌ FAIL: CRITICAL ISSUE, infinite loops are possible!\n"
+            default_output += "❌ FAIL: CRITICAL ISSUE, infinite loops are possible!\n"
     if max_path_length < min_path_length:
+        default_output += f"❌ Max Story Choice Depth: {max_path_length}\n"
         if acceptance.startswith("✅"):
             acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-        path_length = f"❌ FAIL: Number of choices is NOT enough; is {str(max_path_length)} but should be at least {str(min_path_length)}.\n❌ Narrative detail required to be added to the story, it is not long enough. THIS IS CONSIDERED A BUG."
-    return output + "\n" + acceptance + "\n" + path_length + "\n"
+        path_length = f"❌ FAIL: Max length of story choice path is NOT enough; is {str(max_path_length)} but should be at least {str(min_path_length)}.\nMore story choice depth should be added to the story, it is not long enough. THIS IS CONSIDERED A BUG."
+    else:
+        default_output += f"✅ Max Story Choice Depth: {max_path_length}\n"
+    if count_paths_with_warnings > 0 or count_paths_with_errors > 0:
+        default_output += f"{'ℹ️' if count_paths_with_errors == 0 else '❌'} Paths with ERRORS: {count_paths_with_errors}\n"
+        default_output += f"{'ℹ️' if count_paths_with_warnings == 0 else '⚠️ '} Paths with WARNINGS: {count_paths_with_warnings}\n"
+    return (verbose_output if verbose else default_output) + "\n" + acceptance + "\n" + path_length + "\n"
 
 # Example Usage
 '''
@@ -202,11 +222,13 @@ def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, i
 #final_paths_data = test_ink_playthrough("output-example/interactive_narrative.ink", debug_log=True)
 
 # has inf loops, too short
-#final_paths_data = test_ink_playthrough("output-example/inf-loop-test.ink", debug_log=True)
+#final_paths_data = test_ink_playthrough("output-example/inf-loop-test.ink")
 
 # has no bug, is correct length, but does have inf loops
-#final_paths_data = test_ink_playthrough("output-example/expanded_cafe_story.ink", debug_log=True)
+final_paths_data = test_ink_playthrough("output-example/expanded_cafe_story.ink")
 
 # print out the summary with bug report
+print(playthrough_data_report(final_paths_data, verbose=True)) #inf_loops_as_errors=False
+print("\n---------------------------------------\n")
 print(playthrough_data_report(final_paths_data)) #inf_loops_as_errors=False
 '''

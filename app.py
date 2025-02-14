@@ -5,10 +5,13 @@ from agno.tools.file import FileTools
 #from agno.models.ollama import Ollama
 from agno.models.openai import OpenAIChat
 #from agno.models.anthropic import Claude
-from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, find_potential_reports, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result
+from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, find_potential_reports, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result, ink_files_extract_change_background_filenames, ink_files_log_stats
 from pathlib import Path
+from datetime import datetime
 import os
 import glob
+import shutil
+import time
 
 enable_debug=False
 enable_reasoning=False
@@ -59,7 +62,7 @@ agent_name = Agent(
 narrative_writer = Agent(
     name="Narrative game story writer",
     role="The narrative game story writer creates immersive, interactive stories, developing characters, dialogue, and branching narratives that adapt to player choices. The write in complete scenes in a high level of detail.",
-    expected_output="A series of scene overviews, with each scene about 200 words each",
+    expected_output="A scene overview, with each scene about 200 words. Save to file `overview.md`",
     tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
     #reasoning=enable_reasoning,
@@ -138,7 +141,7 @@ development_team = Agent(
     name="Development Team",
     team=[ink_script_developer], #background_artist
     instructions=[
-        "Read the game scene overview document by opening the .md file with the tools. Understand the story and scenes described in the document. "
+        "Read the game scene overview document by opening `overview.md` file. Understand the story and scenes described in the document. "
         f"Bear in mind the user prompt: \"{user_input}\". "
         "Ink Script Developer must create well-structured, interactive scripts that match design specifications. "
         "The game script must cover all scenes in the narrative overview. "
@@ -169,11 +172,6 @@ solo_software_tester = Agent(
     role="Tests Ink scripts and game code for functional correctness, syntax errors, and running test tools, and looking for unintended narrative flows or logical errors. Do not comment on positive aspects of the game, only on any issues. If no issues found, keep note brief.",
     tools=[FileTools(base_dir=output_path), get_ink_error_report, get_ink_stats_report, get_ink_playtest_report],
     model=OpenAIChat(id=openai_model),
-    instructions=[
-        "Thoroughly test all deliverables to ensure functionality, quality, and adherence to requirements.",
-        "Software Tester must check for logic errors, syntax issues, and unintended narrative breaks in the Ink script.",
-        "Always saves report to file. Saving a report to file is a MANDATORY part of the this job."
-    ],
     expected_output="""A report in the following format and save to disk as `qa_report.md`:
 ```
 # QA report
@@ -202,6 +200,37 @@ Result: [PASS|FAIL]
     debug_mode=enable_debug,
 )
 
+test_team = Agent(
+    name="Test Team",
+    team=[solo_software_tester],
+    instructions=[
+        "Software Tester must check for logic errors, syntax issues, and unintended narrative breaks in the Ink script.",
+        "Must save script to `qa_report.md` file. "
+    ],
+    model=OpenAIChat(id=openai_model),
+    reasoning=enable_reasoning,
+    markdown=True,
+    structured_outputs=True,
+    show_tool_calls=True,
+    debug_mode=enable_debug,
+)
+
+# -------------------------------------------------------
+# ---- LOGGER ----
+
+log_output_file = "output.log.txt"
+f_log = open(log_output_file, 'a')
+
+def log(text):
+    logger.info(text)
+    try:
+        f_log.write(f"{text}\n")
+    except IOError as e:
+        print(f"Failed to log to file: {e}")
+
+# -------------------------------------------------------
+# ---- CREATE GAME ORCHESTRATION ----
+
 output_folder="output/"
 max_task_retry=5
 
@@ -228,7 +257,7 @@ def development_iteration():
         folder_path=output_folder,
         max_retries=max_task_retry,
         task_desc="🛠️ Writing Ink script",
-        log_func=logger.info
+        log_func=log
     )
 
     # remove previous QA and acceptance testing reports
@@ -236,7 +265,7 @@ def development_iteration():
 
     retry_until_success(
         task_func=lambda: (
-            solo_software_tester.print_response(
+            test_team.print_response(
                 f"Test Ink script .ink file. Identify any functional issues, narrative inconsistencies, or usability problems. "
                 f"Generate a QA report and save the file `qa_report.md`. ",
                 stream=True,
@@ -246,22 +275,22 @@ def development_iteration():
         success_check_func=lambda: os.path.exists(os.path.join(output_folder, "qa_report.md")),
         max_retries=max_task_retry,
         task_desc="🔍 Performing quality assurance",
-        log_func=logger.info
+        log_func=log
     )
 
     qa_status = evaluate_report(output_folder + "qa_report.md")
     if qa_status == "FAIL":
-        logger.info(f"❌ QA failed development iteration.\n")
+        log(f"❌ QA failed development iteration.")
         return "FAIL"
 
-    logger.info(f"✅ Quality Assurance Passed.\n")
+    log(f"✅ Quality Assurance Passed.\n")
 
-    logger.info(f"✅ Development is completed.\n")
+    log(f"✅ Development is completed.\n")
 
     return "PASS"
 
-if __name__ == "__main__":
-    print("\n🚀 Starting Process...\n")
+def run_task_iteration():
+    log("\n🚀 Starting Process...\n")
 
     retry_until_folder_changes(
         task_func=lambda: (
@@ -275,7 +304,7 @@ if __name__ == "__main__":
         folder_path=output_folder,
         max_retries=max_task_retry,
         task_desc="✏️ Writing narrative overview",
-        log_func=logger.info
+        log_func=log
     )
 
     retry_until_success_result(
@@ -283,7 +312,7 @@ if __name__ == "__main__":
         success_check_func=lambda result: result == "PASS",
         max_retries=max_task_retry,
         task_desc="🚀 Development iteration",
-        log_func=logger.info,
+        log_func=log,
         do_between_reties_func=lambda: (
             [os.remove(f) for f in glob.glob(f"{output_folder}*.old")],
             [os.remove(f) for f in glob.glob(f"{output_folder}*.ink.json")],
@@ -291,5 +320,55 @@ if __name__ == "__main__":
         )
     )
 
-    print(f"\n✅ Run complete. Check output folder: {output_folder}")
+    log(f"\n✅ Run complete. Check output folder: {output_folder}")
+    return "PASS"
 
+def create_game():
+    # WARNING! deletes all files before starting 😅
+    shutil.rmtree(output_folder)
+    os.mkdir(output_folder)
+    log(f"💣 Cleared {output_folder} folder")
+
+    retry_until_success_result(
+        task_func=lambda: run_task_iteration(),
+        success_check_func=lambda result: result == "PASS" and any(file.endswith(".ink") for file in os.listdir(output_folder)),
+        max_retries=max_task_retry,
+        task_desc="✨ Task iteration",
+        log_func=log,
+        do_between_reties_func=lambda: (
+            shutil.rmtree(output_folder),
+            os.mkdir(output_folder)
+        )
+    )
+
+if __name__ == "__main__":
+    log("-------------------------------------------")
+    log(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    log("Creating new game with instructions:")
+    log(f"{user_input}\n")
+
+    start_time = time.time()
+
+    do_post_gen_logging = False
+    try:
+        create_game()
+
+        log(f"\n✅ Run task iteration PASSed.")
+        #log("TODO, files to get images for: ")
+        #log(ink_files_extract_filenames(output_folder))
+
+        do_post_gen_logging = True
+    except Exception as e:
+        log(f"💀 Create game task failed with error. {e}")
+    
+    end_time = time.time()
+    execution_time = end_time - start_time
+    minutes = int(execution_time // 60)
+    seconds = int(execution_time % 60)
+    log(f"⏱️ Create game took {minutes}:{seconds}\n\n")
+
+    if do_post_gen_logging:
+        log(ink_files_log_stats(output_folder))
+    
+    if f_log is not None:
+        f_log.close()
