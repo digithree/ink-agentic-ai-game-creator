@@ -1,0 +1,61 @@
+/* Ensure the background image is fixed and doesn't move */
+html {
+    background-color: #444;
+}
+body {
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed; /* Keeps the image from scrolling */
+    background-repeat: no-repeat;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevents horizontal scroll */
+    min-height: 100vh; /* Ensures the page is at least full-screen height */
+}
+
+/* Game container styling */
+#game-container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.7); /* Adds contrast for text */
+    border-radius: 10px;
+}
+
+/* Text fades smoothly */
+#story {
+    font-size: 18px;
+    line-height: 1.6;
+    color: white;
+}
+
+/* Choice buttons */
+#choices button {
+    width: 100%;
+    font-size: 20px;
+    padding: 15px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 5px;
+    background: #444;
+    color: white;
+    cursor: pointer;
+}
+
+#choices button:hover {
+    background: #666;
+}
+
+/* Prevent background shifting on mobile */
+@media (max-width: 600px) {
+    body {
+        background-size: cover;
+    }
+    #story {
+        font-size: 22px;
+    }
+    #choices button {
+        font-size: 24px;
+    }
+}
