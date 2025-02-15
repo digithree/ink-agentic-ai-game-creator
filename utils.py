@@ -2,51 +2,19 @@ from agno.utils.log import logger
 from inklecate_permutation_play_tester import test_ink_playthrough, playthrough_data_report
 import openai
 import os
+import subprocess
 import re
+import yaml
 
-def ink_files_log_stats(folder_path):
-    """Return detailed stats on all .ink files in the given folder."""
-    output = ""
+# ---- YAML CONFIG ACCESS ---
 
-    for file_name in os.listdir(folder_path):
-        if file_name.endswith(".ink"):
-            file_path = os.path.join(folder_path, file_name)
-            output += f"--- {file_name}\n"
-            output += playthrough_data_report(
-                data=test_ink_playthrough(file_path),
-                verbose=True
-            ) + "\n"
-            output += subprocess.run(
-                ["inklecate", "-s", file_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                check=False
-            ).stdout.strip() + "\n"
+def load_config(file_path="config.yaml"):
+    with open(file_path, "r") as file:
+        return yaml.safe_load(file)
+    
+config = load_config() # available to these utils
 
-    return output
-
-def extract_change_background_filenames(filename):
-    """Extracts unique filenames from lines starting with '# changeBackground: ' in a given file."""
-    filenames = set()  # Use a set to ensure uniqueness within a file
-    with open(filename, 'r', encoding='utf-8') as file:
-        for line in file:
-            match = re.match(r"^# changeBackground:\s*(.+)", line)
-            if match:
-                filenames.add(match.group(1))  # Add to set to remove duplicates
-    return filenames  # Return as a set
-
-def ink_files_extract_change_background_filenames(folder_path):
-    """Processes all .ink files in the given folder and returns a unique list of filenames."""
-    all_filenames = set()  # Use a set to collect unique filenames across all files
-
-    for file_name in os.listdir(folder_path):
-        if file_name.endswith(".ink"):
-            file_path = os.path.join(folder_path, file_name)
-            all_filenames.update(extract_change_background_filenames(file_path))  # Merge unique filenames
-
-    return list(all_filenames)  # Convert final set to a list
-
+# ---- FOLDER FILE CHANGE MONITOR ----
 
 def get_folder_snapshot(path):
     """Returns a snapshot of the folder containing file names, their modification times, and sizes."""
@@ -89,6 +57,8 @@ if stop_monitor_folder(folder_path, initial_snapshot):
 else:
     print("✅ No changes detected.")
 '''
+
+# ---- TASK RETRY FUNCTIONAL RUNNERS ----
 
 def retry_until_success(task_func, success_check_func, max_retries, task_desc, log_func):
     """
@@ -156,9 +126,7 @@ def retry_until_folder_changes(task_func, folder_path, max_retries, task_desc, l
 
     return retry_until_success(task_func, folder_has_changed, max_retries, task_desc, log_func)
 
-# --- Ink ---
-
-import subprocess
+# ---- INK REPORTING ----
 
 def get_ink_error_report(ink_file) -> str:
     """
@@ -207,7 +175,12 @@ def get_ink_playtest_report(ink_file) -> str:
     try:
         result = test_ink_playthrough(ink_file, debug_log=False)
 
-        report = playthrough_data_report(result, warnings_as_errors=False)
+        report = playthrough_data_report(
+            result,
+            min_path_length=config['ink_script_min_choice_path_len'],
+            warnings_as_errors=config['ink_script_explore_warnings_as_errors'],
+            inf_loops_as_errors=config['ink_script_explore_inf_loops_as_errors']
+        )
         
         if report.find("FAIL") != -1:
             logger.info(f"❌ Ink error report for '{ink_file}':\n{report}")
@@ -272,10 +245,10 @@ def get_ink_stats_report(ink_file) -> str:
             knot_count = int(knots_match.group(1)) if knots_match else None
             word_fail_msg = None
             knot_fail_msg = None
-            if word_count < 500:
-                word_fail_msg = f"Number of words {word_count} is below minimum of 500. REFACTOR CODE TO INCREASE WORD COUNT, EXPANDING THE NARRATIVE DETAIL!"
-            if knot_count < 10:
-                knot_fail_msg = f"Number of knots (labels) {knot_count} is below minimum of 10. REFACTOR CODE TO ADD MORE KNOTS (LABELS), I.E. TO ADD MORE CHOICE POINTS!"
+            if word_count < config['ink_script_min_words']:
+                word_fail_msg = f"Number of words {word_count} is below minimum of {config['ink_script_min_words']}. REFACTOR CODE TO INCREASE WORD COUNT, EXPANDING THE NARRATIVE DETAIL!"
+            if knot_count < config['ink_script_min_knots']:
+                knot_fail_msg = f"Number of knots (labels) {knot_count} is below minimum of {config['ink_script_min_knots']}. REFACTOR CODE TO ADD MORE KNOTS (LABELS), I.E. TO ADD MORE CHOICE POINTS!"
             output = f"👀 Ink script features QA report for '{ink_file}':\n"
             if word_fail_msg or knot_fail_msg:
                 output += "❌ FAIL " + "\n❌ FAIL ".join(msg for msg in [word_fail_msg, knot_fail_msg] if msg is not None)
@@ -288,7 +261,29 @@ def get_ink_stats_report(ink_file) -> str:
         logger.error(f"❌ Error running inklecate: {e}")
         return "❌ Error running inklecate."
 
-# --- General ---
+def ink_files_log_stats(folder_path):
+    """Return detailed stats on all .ink files in the given folder."""
+    output = ""
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".ink"):
+            file_path = os.path.join(folder_path, file_name)
+            output += f"--- {file_name}\n"
+            output += playthrough_data_report(
+                data=test_ink_playthrough(file_path),
+                verbose=True
+            ) + "\n"
+            output += subprocess.run(
+                ["inklecate", "-s", file_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False
+            ).stdout.strip() + "\n"
+
+    return output
+
+# ---- QA TEST HELPERS ----
 
 def find_potential_reports(directory, report_type):
     """
@@ -395,3 +390,27 @@ def evaluate_report(report_file):
 
 # Example usage
 # print(evaluate_qa_report("sprint_1_qa_report.md"))  # Should return either "PASS" or "FAIL"
+
+
+# ----------- UNUSED, SPECULATIVE ON FUTURE DEV
+
+def extract_change_background_filenames(filename):
+    """Extracts unique filenames from lines starting with '# changeBackground: ' in a given file."""
+    filenames = set()  # Use a set to ensure uniqueness within a file
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            match = re.match(r"^# changeBackground:\s*(.+)", line)
+            if match:
+                filenames.add(match.group(1))  # Add to set to remove duplicates
+    return filenames  # Return as a set
+
+def ink_files_extract_change_background_filenames(folder_path):
+    """Processes all .ink files in the given folder and returns a unique list of filenames."""
+    all_filenames = set()  # Use a set to collect unique filenames across all files
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".ink"):
+            file_path = os.path.join(folder_path, file_name)
+            all_filenames.update(extract_change_background_filenames(file_path))  # Merge unique filenames
+
+    return list(all_filenames)  # Convert final set to a list

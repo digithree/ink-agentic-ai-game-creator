@@ -14,7 +14,7 @@ The project is set up using [Agno](https://github.com/agno-agi/agno) with 3 agen
 
 > Side bar: [Ink](https://www.inklestudios.com/ink/) is an interactive narrative language and engine developed by [Inkle Studios](https://www.inklestudios.com). Check out their Time Game of the Year 2014 winning game [80 days](https://www.inklestudios.com/80days/).
 
-The narrative writer (1) always runs just once, and then the dev (2) and tester (3) run in a loop until the results satisfy the criteria minimum criteria of the game (which is very forgiving, but necessarily limited in scope or the bar is too high): no syntax error or lint warnings, longest choice path at least 5 deep, at least 500 words total and at least 15 'knots' (what Ink calls the story branch points).
+The narrative writer (1) always runs just once, and then the dev (2) and tester (3) run in a loop until the results satisfy the criteria minimum criteria of the game (which is very forgiving, but necessarily limited in scope or the bar is too high): no syntax error or lint warnings, longest choice path at least 5 deep, at least 500 words total and at least 10 'knots' (what Ink calls the story branch points).
 
 Note that Agno seems to do file read and write better when an agent is on a team, so the dev and tester are wrapped in another agent to set it to a team. Teams are generally intended for more than one assigned agent, which can work, but for closed purpose tasks like the on I have created here we need more predictability.
 
@@ -31,7 +31,7 @@ However, there are some interesting features:
 - the Ink game path permutation runner was particularly fun to write, and I had to write a lot of it myself by hand as it was too complex for ChatGPT to figure out how to do. It also detects infinite choice loops!
 - the InkJS custom runner, with a feature to automatically save progress. The games are super short so this is not an important feature for this use, but actually this will run much larger Ink games so it might be useful on its own
 
-I'm particularly sensitive to the concerns of artists regarding AI, in many different aspects, particularly in job replacement, theft of work through scrapping for training data, and the lowing of the quality of art. My project here is an experiment, just a toy really, not a tool that aspires to replace game designers. I think it is important for us all to understand where the state of the art is today regarding these tools since, if it can be easily done, then people will be doing it and we should be aware of that.
+I'm particularly sensitive to the concerns of artists regarding AI, in many different aspects, particularly in job replacement, theft of work through scrapping for training data, and the lowing of the quality and substance of art. My project here is an experiment, just a toy really, not a tool that _actually_ aspires to replace game designers. I think it is important for us all to understand where the state of the art is today regarding these tools since, if it can be easily done, then people will be doing it and we should be aware of that.
 
 What I see today (writing in Feb 2025) at least is that **self-direction is not yet viable for complex agentic systems.** They need much hand-holding and even then the results are mediocre. My first attempts were just to set up some agent with 'job' descriptions and set a complex task, but this yielded virtually nothing. There is no yet "plz craete game" button. What this project demostrates really is the lengths you have to go just to get a very small amount of success.
 
@@ -100,6 +100,16 @@ Ensure `npm http-server` is installed globally:
 ```sh
 npm install -g http-server
 ```
+
+## Configuration
+
+`config.yaml` contains many configuraiton options, such as:
+
+- LLM provider and model, e.g. OpenAI, Anthropic, Ollama
+- Ink script metric standard, e.g. a certain choice path depth, total number of words, etc.
+- Auto-mode
+- Output settings
+- Debugging and logging information
 
 ## Running the Application
 

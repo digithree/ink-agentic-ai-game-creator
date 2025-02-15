@@ -1,0 +1,27 @@
+# ---- prompting control
+sample_prompt: "The journey of a wizard from the foot of a giant mountain to visit the very top, where they will find a secret magical treasure that can heal the world."
+enable_ask_user_for_prompt: true # set false to start run automatically when script start, good for debugging or orchestrated running
+# ---- AI LLM config
+llm_provider: openai # on of openai, anthropic, ollama
+llm_model: "gpt-4o" # specific to provider, e.g. 'gpt-4o' for openai, 'claude-3-5-sonnet-latest' for anthropic, 'llama3.2' for ollama
+# ---- Ink script minimum quality metrics
+ink_script_min_words: 500
+ink_script_min_knots: 10
+ink_script_min_choice_path_len: 5
+ink_script_explore_warnings_as_errors: false
+ink_script_explore_inf_loops_as_errors: false
+# ---- max retry config, as individual parts, often fail and system needs to be tolerant to have any chance of working
+max_run_retries: 3 # the overall run, i.e. from narrative -> dev -> test [if FAIL, back to dev]
+max_task_retries: 5 # retries per task, i.e. any individual attempt at narrative, dev or test
+# ---- Agno config
+enable_agent_reasoning: false # though useful in some use cases, reasoning appears to hallucate more, especially to do with filenames; the reasoning step often unreasonably predicts non-existent filenames
+# ---- output config
+output_folder_for_build: "output/"
+output_folder_for_success_save: "output_success/"
+clear_output_folder_on_run_start: true # strongly encourage set as true, though destructive, or old files will conflict with newly created files
+# logging
+enable_debug_logging: false
+enable_detailed_logging: true
+enable_file_logging: true
+enable_post_success_ink_stats_logging: true # you might disable this to save time, as it runs the choice permutation exploration again which can take a minute or two
+log_filename: "output.log.txt"
