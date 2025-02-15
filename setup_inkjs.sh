@@ -2,7 +2,7 @@
 
 # Check if there's only one json file in output/
 count=0
-for file in output/*.json; do
+for file in output_success/*.json; do
     ((count++))
 done
 if [ $count -ne 1 ]; then

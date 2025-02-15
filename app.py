@@ -3,6 +3,8 @@ from agno.utils.log import logger
 from agno.tools.file import FileTools
 #from agno.tools.dalle import DalleTools
 from agno.models.openai import OpenAIChat
+#from agno.models.ollama import Ollama
+#from agno.models.anthropic import Claude
 from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, find_potential_reports, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result, ink_files_extract_change_background_filenames, ink_files_log_stats
 from pathlib import Path
 from datetime import datetime
@@ -17,10 +19,14 @@ enable_reasoning=False
 # "Develop a high-quality text-based narrative game using Ink, incorporating branching storylines and engaging player choices."
 user_input = input("Write your customer project directive statement: ")
 if user_input == "":
-    user_input = "Create a game prototype with the following idea: A romance between a hardworking cafe owner (female) and a spirit that haunts the new cafe building she inherited from a relative. The player plays the cafe owner."
+    user_input = "The journey of a wizard from the foot of a giant mountain to visit the very top, where they will find a secret magical treasure that can heal the world."
     print(f"Using default input: {user_input}")
 
-openai_model = "gpt-4o"
+
+def create_llm():
+    return OpenAIChat(id="gpt-4o")
+    #llm=Ollama(id="mistral")
+    #llm=Claude(id="claude-3-5-sonnet-latest")
 
 output_path = Path("output/")
 
@@ -48,7 +54,7 @@ agent_name = Agent(
         # and you can even simply add custom tools as Python function references, such as running a linter, executing code, get a quality metric for an image, etc.
     ],
     # don't change the below
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
 )
 '''
 
@@ -59,7 +65,7 @@ narrative_writer = Agent(
     role="The narrative game story writer creates immersive, interactive stories, developing characters, dialogue, and branching narratives that adapt to player choices. The write in complete scenes in a high level of detail.",
     expected_output="A scene overview, with each scene about 200 words. Save to file `overview.md`",
     tools=[FileTools(base_dir=output_path)],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
@@ -72,7 +78,7 @@ ink_script_developer = Agent(
     role="Writes structured Ink scripts to implement the game's branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide (customise for the theme):\n\n" + ink_guide,
     expected_output="A well-structured Ink script (.ink) implementing interactive narrative and state logic. Always saves its .ink file to disk.",
     tools=[FileTools(base_dir=output_path)],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
@@ -92,7 +98,7 @@ development_team = Agent(
         "Must save script to .ink file. ",
         #"Background Artist should create environment visuals that match the tone and aesthetic of the game.",
     ],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
     reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
@@ -107,18 +113,18 @@ background_artist = Agent(
     role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with Ink Script Developer to obtain filenames for graphics assets deliverables, and with writers to align visual storytelling with narrative tone.",
     expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
     tools=[FileTools(base_dir=output_path), DalleTools()],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
 )
 '''
 
 # ---- Agent 3: Software tester (on team of 1, for better file handling and tool use) ----
-# Uses Inkulate tools to get PASS or FAIL on key stats, and cause dev looping with below stats min
+# Uses inklecate tools to get PASS or FAIL on key stats, and cause dev looping with below stats min
 # Stats are errors, warnings, longest path too short, not enough words or knots (labels)
 solo_software_tester = Agent(
     name="Software Tester",
     role="Tests Ink scripts and game code for functional correctness, syntax errors, and running test tools, and looking for unintended narrative flows or logical errors. Do not comment on positive aspects of the game, only on any issues. If no issues found, keep note brief.",
     tools=[FileTools(base_dir=output_path), get_ink_error_report, get_ink_stats_report, get_ink_playtest_report],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
     expected_output="""A report in the following format and save to disk as `qa_report.md`:
 ```
 # QA report
@@ -153,7 +159,7 @@ test_team = Agent(
         "Software Tester must check for logic errors, syntax issues, and unintended narrative breaks in the Ink script.",
         "Must save script to `qa_report.md` file. "
     ],
-    model=OpenAIChat(id=openai_model),
+    model=create_llm(),
     reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
@@ -177,6 +183,7 @@ def log(text):
 # ---- CREATE GAME ORCHESTRATION ----
 
 output_folder="output/"
+success_folder="output_success/"
 max_task_retry=5
 
 def development_iteration():
@@ -286,6 +293,18 @@ def create_game():
         )
     )
 
+def transfer_output_success():
+    os.makedirs(success_folder, exist_ok=True)
+
+    for item in os.listdir(output_folder):
+        source_path = os.path.join(output_folder, item)
+        destination_path = os.path.join(success_folder, item)
+
+        if os.path.isdir(source_path):
+            shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source_path, destination_path)
+
 if __name__ == "__main__":
     log("-------------------------------------------")
     log(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -302,6 +321,8 @@ if __name__ == "__main__":
         #log("TODO, files to get images for: ")
         #log(ink_files_extract_filenames(output_folder))
 
+        transfer_output_success()
+
         do_post_gen_logging = True
     except Exception as e:
         log(f"💀 Create game task failed with error. {e}")
@@ -313,6 +334,7 @@ if __name__ == "__main__":
     log(f"⏱️ Create game took {minutes}:{seconds}\n\n")
 
     if do_post_gen_logging:
+        log("🚦 Please wait for game report to generate...")
         log(ink_files_log_stats(output_folder))
     
     if f_log is not None:

@@ -1,0 +1,4 @@
+agno==1.0.8
+anthropic==0.45.2
+ollama==0.4.7
+openai==1.61.1

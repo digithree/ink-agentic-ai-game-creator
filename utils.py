@@ -22,7 +22,7 @@ def ink_files_log_stats(folder_path):
                 stderr=subprocess.STDOUT,
                 text=True,
                 check=False
-            ).strip() + "\n"
+            ).stdout.strip() + "\n"
 
     return output
 
