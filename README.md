@@ -1,4 +1,6 @@
-# Narrative Game Builder
+# Ink Agentic AI Game Creator
+
+An experiment in using Agno LLM-based agentic AI to orchestrate end to end narrative game creation for Ink.
 
 ## DISCLAIMER AND NOTE
 
