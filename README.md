@@ -26,6 +26,10 @@ There was also an 'artist' to work with AI image generation tool DALL-E but this
 
 The results are mixed. I have been able to create something which in most cases will output a functioning game, but it is a very short game, very generic and uninteresting to play. I had to build the agentic runner to retry steps at every level if either the quality wasn't good or if the task simply failed to yield a result, even though the system outputed it was done (i.e. check for file changes). In many cases, the system simply fails entirely, or does not create a game to the desired spec. In all cases I've tested so far, it also struggles and ultimately fails to set up any actual stakes or failure cases, making the game, short as it is, too easy.
 
+_Successfully generated Ink script in Inky editor:_
+
+![Successfully generated Ink script in Inky editor](/docs/ink-success-scrshot.png)
+
 However, there are some interesting features:
 
 - it does use the agentic system correctly, which interestingly has file access, though this often fails and needs a retry loop
@@ -36,6 +40,10 @@ However, there are some interesting features:
 I'm particularly sensitive to the concerns of artists regarding AI, in many different aspects, particularly in job replacement, theft of work through scrapping for training data, and the lowering of the quality and substance of art. I think it is important for us all to understand where the state of the art is today regarding these tools since, if it can be easily done, then people will be doing it and we should be aware of that.
 
 > My project here is an experiment, just a toy really, not a tool that _actually_ aspires to replace game designers.
+
+The narrative game _Killing Time At Lightspeed_ explored this catestrophic dream, incidently in a small part of the game, calling these games "defaultist", an interesting term.
+
+![Screenshot from game Killing Time At Lightspeed](/docs/ktals-games-are-dead.png)
 
 What I see today (writing in Feb 2025) at least is that **self-direction is not yet viable for complex agentic systems.** They need much hand-holding and even then the results are mediocre. My first attempts were just to set up some agent with 'job' descriptions and set a complex task, but this yielded virtually nothing. There is no yet "plz craete game" button. What this project demonstrates really is the lengths you have to go just to get a very small amount of success.
 
