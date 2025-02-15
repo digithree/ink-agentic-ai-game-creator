@@ -163,7 +163,7 @@ def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, i
     default_output = ""
     acceptance = "✅ PASS, no syntax errors or warnings"
     path_length = "✅ Number of choices is enough to PASS"
-    max_path_length = 0
+    longest_path_length = 0
     default_output += f"➡️  Possible Story Paths Permutations: {len(completed_path_data)}\n"
     count_paths_with_warnings = 0
     count_paths_with_errors = 0
@@ -178,8 +178,8 @@ def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, i
                 count_paths_with_warnings += 1
                 if warnings_as_errors:
                     acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-            if len(path) > max_path_length:
-                max_path_length = len(path)
+            if len(path) > longest_path_length:
+                longest_path_length = len(path)
             verbose_output += f"{idx + 1}. {list([int(choice) for choice in path])}, {issues_to_str(issues)}\n"
     else:
         verbose_output += "❌ FAIL: CRITICAL ISSUE, no story paths can be completed successful!\n"
@@ -204,13 +204,13 @@ def playthrough_data_report(data, min_path_length=5, warnings_as_errors=False, i
         if inf_loops_as_errors:
             verbose_output += "❌ FAIL: CRITICAL ISSUE, infinite loops are possible!\n"
             default_output += "❌ FAIL: CRITICAL ISSUE, infinite loops are possible!\n"
-    if max_path_length < min_path_length:
-        default_output += f"❌ Max Story Choice Depth: {max_path_length}\n"
+    if longest_path_length < min_path_length:
+        default_output += f"❌ Longest Story Choice Depth: {longest_path_length}\n"
         if acceptance.startswith("✅"):
             acceptance = "❌ FAIL: CRITICAL ISSUES WITH INK SCRIPT, MUST FIX BUGS IMMEDIATELY"
-        path_length = f"❌ FAIL: Max length of story choice path is NOT enough; is {str(max_path_length)} but should be at least {str(min_path_length)}.\nMore story choice depth should be added to the story, it is not long enough. THIS IS CONSIDERED A BUG."
+        path_length = f"❌ FAIL: Longest length of story choice path is NOT enough; is {str(longest_path_length)} but should be at least {str(min_path_length)}.\nMore story choice depth should be added to the story, it is not long enough. THIS IS CONSIDERED A BUG."
     else:
-        default_output += f"✅ Max Story Choice Depth: {max_path_length}\n"
+        default_output += f"✅ Longest Story Choice Depth: {longest_path_length}\n"
     if count_paths_with_warnings > 0 or count_paths_with_errors > 0:
         default_output += f"{'ℹ️' if count_paths_with_errors == 0 else '❌'} Paths with ERRORS: {count_paths_with_errors}\n"
         default_output += f"{'ℹ️' if count_paths_with_warnings == 0 else '⚠️ '} Paths with WARNINGS: {count_paths_with_warnings}\n"
