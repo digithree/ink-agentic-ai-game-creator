@@ -44,6 +44,59 @@ Some prompts that were mostly successful:
 - The journey of a wizard from the foot of a giant mountain to visit the very top, where they will find a secret magical treasure that can heal the world.
 - The journey of an ant that becomes sentient and decides to leave the ant hill to discover the meaning of life.
 
+Example success message:
+
+```
+INFO     ℹ️ Evaluating report in output/qa_report.md.
+INFO     ✅ Quality Assurance Passed.
+INFO     ✅ Development is completed.                                     
+INFO     ✅ Run complete. Check output folder: output/
+INFO     ✅ Run task iteration PASSed.
+INFO     ⏱️ Create game took 5:42                                          
+INFO     🚦 Please wait for game report to generate...
+INFO     --- branched_narrative_game.ink
+         ➡️  Possible Story Paths:
+         1. [1, 1, 1], No issues
+         2. [1, 1, 2], No issues
+         3. [2, 1, 1], No issues
+         4. [2, 1, 2], No issues
+         5. [3, 1, 1], No issues
+         6. [3, 1, 2], No issues
+         7. [1, 2, 2, 1], No issues
+         8. [1, 2, 2, 2], No issues
+         9. [2, 2, 2, 1], No issues
+         10. [2, 2, 2, 2], No issues
+         11. [3, 2, 2, 1], No issues
+         12. [3, 2, 2, 2], No issues
+         13. [1, 2, 1, 2, 1], No issues
+         14. [2, 2, 1, 2, 1], No issues
+         15. [3, 2, 1, 2, 1], No issues
+         16. [1, 2, 1, 2, 2, 1], No issues
+         17. [2, 2, 1, 2, 2, 1], No issues
+         18. [3, 2, 1, 2, 2, 1], No issues
+         19. [1, 2, 1, 1, 1, 1, 1], No issues
+         20. [1, 2, 1, 1, 1, 2, 1], No issues
+         21. [1, 2, 1, 1, 2, 1, 1], No issues
+         22. [1, 2, 1, 1, 2, 2, 1], No issues
+         23. [2, 2, 1, 1, 1, 1, 1], No issues
+         24. [2, 2, 1, 1, 1, 2, 1], No issues
+         25. [2, 2, 1, 1, 2, 1, 1], No issues
+         26. [2, 2, 1, 1, 2, 2, 1], No issues
+         27. [3, 2, 1, 1, 1, 1, 1], No issues
+         28. [3, 2, 1, 1, 1, 2, 1], No issues
+         29. [3, 2, 1, 1, 2, 1, 1], No issues
+         30. [3, 2, 1, 1, 2, 2, 1], No issues
+         ✅ PASS, no syntax errors or warnings
+         ✅ Number of choices is enough to PASS                            
+         Words: 667
+         Knots: 18
+         Stitches: 0
+         Functions: 0
+         Choices: 18
+         Gathers: 0
+         Diverts: 28  
+```
+
 Prompts that never worked for me:
 
 - In a world of smog, air is a commodity. Make your way across the wasteland to find a new source of oxygen in the rocks.
