@@ -33,9 +33,11 @@ However, there are some interesting features:
 - the Ink game path permutation runner was particularly fun to write, and I had to write a lot of it myself by hand as it was too complex for ChatGPT to figure out how to do. It also detects infinite choice loops!
 - the InkJS custom runner, with a feature to automatically save progress. The games are super short so this is not an important feature for this use, but actually this will run much larger Ink games so it might be useful on its own
 
-I'm particularly sensitive to the concerns of artists regarding AI, in many different aspects, particularly in job replacement, theft of work through scrapping for training data, and the lowing of the quality and substance of art. My project here is an experiment, just a toy really, not a tool that _actually_ aspires to replace game designers. I think it is important for us all to understand where the state of the art is today regarding these tools since, if it can be easily done, then people will be doing it and we should be aware of that.
+I'm particularly sensitive to the concerns of artists regarding AI, in many different aspects, particularly in job replacement, theft of work through scrapping for training data, and the lowering of the quality and substance of art. I think it is important for us all to understand where the state of the art is today regarding these tools since, if it can be easily done, then people will be doing it and we should be aware of that.
 
-What I see today (writing in Feb 2025) at least is that **self-direction is not yet viable for complex agentic systems.** They need much hand-holding and even then the results are mediocre. My first attempts were just to set up some agent with 'job' descriptions and set a complex task, but this yielded virtually nothing. There is no yet "plz craete game" button. What this project demostrates really is the lengths you have to go just to get a very small amount of success.
+> My project here is an experiment, just a toy really, not a tool that _actually_ aspires to replace game designers.
+
+What I see today (writing in Feb 2025) at least is that **self-direction is not yet viable for complex agentic systems.** They need much hand-holding and even then the results are mediocre. My first attempts were just to set up some agent with 'job' descriptions and set a complex task, but this yielded virtually nothing. There is no yet "plz craete game" button. What this project demonstrates really is the lengths you have to go just to get a very small amount of success.
 
 ## Prompt examples
 
