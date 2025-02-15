@@ -2,9 +2,9 @@
 
 ## DISCLAIMER AND NOTE
 
-This project was created using ChatGPT and Copilot, and is the first project I have created 'assisted' by LLM tools in this way. It is primarily an investigation of the state of the art of so-called agentic systems, particularly how they might replace software developer effort.
+This project was created using ChatGPT and Copilot, and is the first project I have created 'assisted' by LLM tools in this way. It is primarily an investigation of the state of the art of so-called agentic systems, particularly how they might replace software developer effort, and even that of an entire project development team.
 
-The example case I have chosen here is the one that got me into coding as a kid – making a computer game. And, like when I was a kid, it is for a text adventure. While I created this software using AI systems, the idea was to see if it could create an automated system to create something automatically given just a one line idea.
+The example case I have chosen here is the one that got me into coding as a kid – making a computer game. And, like when I was a kid, it is for a text adventure. While I created this software using AI systems, the idea was to see if it could create an automated system to create something automatically given just a one line idea. The tools were chosen based on ease of use, terseness of coding and 'comprehension' by ChatGPT as development 'copilot'.
 
 The project is set up using [Agno](https://github.com/agno-agi/agno) with 3 agents (acutally 5, two are wrapped on teams):
 
@@ -12,7 +12,9 @@ The project is set up using [Agno](https://github.com/agno-agi/agno) with 3 agen
 2. Ink Script Developer (Development Team)
 3. Software Tester (Test Team)
 
-The narrative writer always runs just once, and then the dev and tester run in a loop until the results satisfy the criteria minimum criteria of the game (which is very forgiving, but necessarily limited in scope or the bar is too high): no syntax error or lint warnings, longest choice path at least 5 deep, at least 500 words total and at least 15 'knots' (what Ink calls the story branch points).
+> Side bar: [Ink](https://www.inklestudios.com/ink/) is an interactive narrative language and engine developed by [Inkle Studios](https://www.inklestudios.com). Check out their Time Game of the Year 2014 winning game [80 days](https://www.inklestudios.com/80days/).
+
+The narrative writer (1) always runs just once, and then the dev (2) and tester (3) run in a loop until the results satisfy the criteria minimum criteria of the game (which is very forgiving, but necessarily limited in scope or the bar is too high): no syntax error or lint warnings, longest choice path at least 5 deep, at least 500 words total and at least 15 'knots' (what Ink calls the story branch points).
 
 Note that Agno seems to do file read and write better when an agent is on a team, so the dev and tester are wrapped in another agent to set it to a team. Teams are generally intended for more than one assigned agent, which can work, but for closed purpose tasks like the on I have created here we need more predictability.
 
