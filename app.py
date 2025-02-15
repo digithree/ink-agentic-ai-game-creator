@@ -2,9 +2,7 @@ from agno.agent import Agent
 from agno.utils.log import logger
 from agno.tools.file import FileTools
 #from agno.tools.dalle import DalleTools
-#from agno.models.ollama import Ollama
 from agno.models.openai import OpenAIChat
-#from agno.models.anthropic import Claude
 from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, find_potential_reports, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result, ink_files_extract_change_background_filenames, ink_files_log_stats
 from pathlib import Path
 from datetime import datetime
@@ -23,10 +21,6 @@ if user_input == "":
     print(f"Using default input: {user_input}")
 
 openai_model = "gpt-4o"
-
-#llm=Ollama(id="mistral")
-#llm=OpenAIChat(id=openai_model)
-#llm=Claude(id="claude-3-5-sonnet-latest")
 
 output_path = Path("output/")
 
@@ -58,80 +52,27 @@ agent_name = Agent(
 )
 '''
 
-# ---- PROJECT PLANNING AGENTS ----
+# ---- Agent 1: story writer ----
+# Simple output to `overview.md` with ideas for narrative to try to solidify that for Ink code
 narrative_writer = Agent(
     name="Narrative game story writer",
     role="The narrative game story writer creates immersive, interactive stories, developing characters, dialogue, and branching narratives that adapt to player choices. The write in complete scenes in a high level of detail.",
     expected_output="A scene overview, with each scene about 200 words. Save to file `overview.md`",
     tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
-    #reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
 )
 
-game_designer = Agent(
-    name="Game Designer",
-    role="Provides a structured plan on how game mechanics should be implemented in the Ink scripting system. Advises on scene structuring, branching choices, and interactive pacing.",
-    expected_output="""A structured plan of each scene, based on the narrative game story. Consider this format:
-```
-# Narrative Structure for a Slice-of-Life Fetch Quest  
-
-## Scene 1: The Coffee Shop  
-- The player arrives at their favorite coffee shop on a chilly morning.  
-- The smell of fresh espresso fills the air, and the usual hum of conversation surrounds them.  
-- Mia, the barista, is behind the counter, but she looks unusually stressed.  
-- A choice: **Talk to Mia or Order a coffee first**.  
-  - If the player talks to Mia, she sighs and hesitates before sharing what's wrong.  
-  - If the player orders coffee first, she tries to hide her frustration but still seems distracted.  
-
-## Scene 2: Mia's Problem  
-- If the player engages Mia, she admits she's run out of oat milk, and one of the regulars is waiting on their usual order.  
-- She explains that her supplier won't restock until tomorrow, and she doesn't want to disappoint the customer.  
-- A choice: **Offer to get oat milk or just sympathize**.  
-  - If the player offers to help, she looks relieved and suggests trying the corner store.  
-  - If the player sympathizes but does nothing, she thanks them but continues to look stressed. The player goes about their day as usual.  
-
-## Scene 3: Finding the Oat Milk  
-- If the player takes the quest, they head to the corner store, a small, cluttered shop a few blocks away.  
-- The shelves are half-empty, and the store is unusually busy.  
-- A choice: **Check the dairy section or ask the cashier**.  
-  - If they check the shelves, they might find the last carton of oat milk.  
-  - If they ask the cashier, they learn that oat milk sold out earlier that morning, but there might be some at the supermarket.  
-
-## Scene 4: The Decision at the Store  
-- If the player finds oat milk, they can take it and return to Mia immediately.  
-- If the store is out, the player must decide:  
-  - **Go to the supermarket**: It's further away but almost guaranteed to have oat milk.  
-  - **Give up and return to Mia empty-handed**.  
-- If they go to the supermarket, they find plenty of oat milk but have spent extra time.  
-
-## Scene 5: Returning to Mia  
-- If the player brings back oat milk, Mia lights up with relief. She thanks them enthusiastically and hands them a free coffee as a reward.  
-- If the player returns without oat milk, Mia sighs but nods in appreciation for the effort.  
-- If the player never tried to help, Mia makes do without and the scene simply moves on.  
-
-## End of Story  
-- The player leaves the coffee shop, either feeling like they made a difference or simply going about their usual routine.  
-- The scene ends based on their level of involvement in Mia's problem.  
-```
-""",
-    tools=[FileTools(base_dir=output_path)],
-    model=OpenAIChat(id=openai_model),
-    #reasoning=enable_reasoning,
-    markdown=True,
-    structured_outputs=True,
-    show_tool_calls=True,
-)
-
+# ---- Agent 2: Ink script writer (on team of 1, for better file handling) ----
+# Writes Ink script code. Will attempt to fix old code in development loop to improve stats
 ink_script_developer = Agent(
     name="Ink Script Developer",
     role="Writes structured Ink scripts to implement the game's branching narrative. Ensures logical flow, proper state management, and engaging player choices while adhering to requirements. Ink coding guide (customise for the theme):\n\n" + ink_guide,
     expected_output="A well-structured Ink script (.ink) implementing interactive narrative and state logic. Always saves its .ink file to disk.",
     tools=[FileTools(base_dir=output_path)],
     model=OpenAIChat(id=openai_model),
-    #reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
@@ -159,14 +100,20 @@ development_team = Agent(
     debug_mode=enable_debug,
 )
 
-# background_artist = Agent(
-#     name="Background Artist",
-#     role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with Ink Script Developer to obtain filenames for graphics assets deliverables, and with writers to align visual storytelling with narrative tone.",
-#     expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
-#     tools=[FileTools(base_dir=output_path), DalleTools()],
-#     model=OpenAIChat(id=openai_model),
-# )
+# ---- Agent X: DISABLED, background artist (too expensive to run DALLE in testing ----
+'''
+background_artist = Agent(
+    name="Background Artist",
+    role="Creates detailed 2D background art for the game, ensuring consistency with its visual style. Works closely with Ink Script Developer to obtain filenames for graphics assets deliverables, and with writers to align visual storytelling with narrative tone.",
+    expected_output="A set of rendered background images adhering to the game's art style and scene requirements.",
+    tools=[FileTools(base_dir=output_path), DalleTools()],
+    model=OpenAIChat(id=openai_model),
+)
+'''
 
+# ---- Agent 3: Software tester (on team of 1, for better file handling and tool use) ----
+# Uses Inkulate tools to get PASS or FAIL on key stats, and cause dev looping with below stats min
+# Stats are errors, warnings, longest path too short, not enough words or knots (labels)
 solo_software_tester = Agent(
     name="Software Tester",
     role="Tests Ink scripts and game code for functional correctness, syntax errors, and running test tools, and looking for unintended narrative flows or logical errors. Do not comment on positive aspects of the game, only on any issues. If no issues found, keep note brief.",
@@ -193,7 +140,6 @@ solo_software_tester = Agent(
 Result: [PASS|FAIL]
 ```
     """,
-    ##reasoning=enable_reasoning,
     markdown=True,
     structured_outputs=True,
     show_tool_calls=True,
@@ -215,7 +161,6 @@ test_team = Agent(
     debug_mode=enable_debug,
 )
 
-# -------------------------------------------------------
 # ---- LOGGER ----
 
 log_output_file = "output.log.txt"
@@ -295,7 +240,7 @@ def run_task_iteration():
     retry_until_folder_changes(
         task_func=lambda: (
             narrative_writer.print_response(
-                f"Write a narrative overview given the following brief: {user_input}"
+                f"Write a narrative overview given the following brief: \"{user_input}\". "
                 f"Save the narrative overview to a file. ",
                 stream=True,
                 show_full_reasoning=True
