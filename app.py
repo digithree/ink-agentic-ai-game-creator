@@ -3,8 +3,8 @@ from agno.utils.log import logger
 from agno.tools.file import FileTools
 #from agno.tools.dalle import DalleTools
 from agno.models.openai import OpenAIChat
-from agno.models.ollama import Ollama
 from agno.models.anthropic import Claude
+from agno.models.ollama import Ollama
 from utils import get_ink_error_report, get_ink_playtest_report, get_ink_stats_report, evaluate_report, retry_until_folder_changes, retry_until_success, retry_until_success_result, ink_files_log_stats, load_config
 from pathlib import Path
 from datetime import datetime
@@ -29,10 +29,10 @@ if prompt == "":
 def create_llm():
     if config['llm_provider'] == "openai":
         return OpenAIChat(id=config['llm_model'])
-    elif config['llm_provider'] == "openai":
-        return OpenAIChat(id=config['llm_model'])
-    elif config['llm_provider'] == "openai":
-        return OpenAIChat(id=config['llm_model'])
+    elif config['llm_provider'] == "anthropic":
+        return Claude(id=config['llm_model'])
+    elif config['llm_provider'] == "ollama":
+        return Ollama(id=config['llm_model'])
     else:
         print("No valid LLM config, check in config.yaml")
         exit()
